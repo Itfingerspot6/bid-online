@@ -1,0 +1,41 @@
+<?php
+
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\AuctionController;
+use App\Http\Controllers\BidController;
+use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\DashboardController;
+use Illuminate\Support\Facades\Schedule;
+use Illuminate\Support\Facades\Route;
+
+// Public
+Route::get('/', [AuctionController::class, 'landing'])->name('home');
+// Dashboard
+Route::get('/dashboard', [DashboardController::class, 'index'])
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard');
+
+// Auth
+Route::middleware('auth')->group(function () {
+    // Profile
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Auctions
+    Route::resource('auctions', AuctionController::class)->except(['index', 'show']);
+
+    // Bids
+    Route::post('/auctions/{auction}/bids', [BidController::class, 'store'])->name('bids.store');
+
+    // Transactions
+    Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
+    Route::post('/transactions/deposit', [TransactionController::class, 'deposit'])->name('transactions.deposit');
+    Route::post('/transactions/{transaction}/pay', [TransactionController::class, 'pay'])->name('transactions.pay');
+});
+
+Route::get('/auctions', [AuctionController::class, 'index'])->name('auctions.index');
+Route::get('/auctions/{slug}', [AuctionController::class, 'show'])->name('auctions.show');
+Schedule::command('auctions:close-expired')->everyMinute();
+
+require __DIR__.'/auth.php';
