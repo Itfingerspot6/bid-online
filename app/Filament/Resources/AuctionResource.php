@@ -43,11 +43,16 @@ class AuctionResource extends Resource
                 Forms\Components\TextInput::make('title')
                     ->label('Judul')
                     ->required()
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->live(onBlur: true)
+                    ->afterStateUpdated(fn ($state, callable $set) => 
+                        $set('slug', \Illuminate\Support\Str::slug($state) . '-' . \Illuminate\Support\Str::random(5))
+                    ),
 
                 Forms\Components\TextInput::make('slug')
                     ->required()
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->unique(ignoreRecord: true),
 
                 Forms\Components\Textarea::make('description')
                     ->label('Deskripsi')
@@ -73,6 +78,13 @@ class AuctionResource extends Resource
                     ->default(1000)
                     ->prefix('Rp'),
 
+                Forms\Components\TextInput::make('buy_now_price')
+                    ->label('Harga Batas / Buy Now')
+                    ->numeric()
+                    ->prefix('Rp')
+                    ->default(null)
+                    ->helperText('Opsional - lelang langsung selesai jika bid mencapai harga ini'),
+
                 Forms\Components\DateTimePicker::make('start_time')
                     ->label('Waktu Mulai')
                     ->required(),
@@ -86,6 +98,7 @@ class AuctionResource extends Resource
                         'draft'     => 'Draft',
                         'active'    => 'Active',
                         'ended'     => 'Ended',
+                        'closed'    => 'Closed',
                         'cancelled' => 'Cancelled',
                     ])
                     ->required(),
@@ -109,6 +122,13 @@ class AuctionResource extends Resource
                     ->label('Harga Saat Ini')
                     ->money('IDR')
                     ->sortable(),
+
+                Tables\Columns\TextColumn::make('buy_now_price')
+                    ->label('Harga Batas')
+                    ->money('IDR')
+                    ->sortable()
+                    ->default('-'),
+
                 Tables\Columns\TextColumn::make('end_time')
                     ->label('Berakhir')
                     ->dateTime()

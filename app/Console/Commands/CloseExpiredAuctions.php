@@ -18,7 +18,10 @@ class CloseExpiredAuctions extends Command
             ->get();
 
         foreach ($expiredAuctions as $auction) {
-            $highestBid = $auction->bids()->orderBy('amount', 'desc')->first();
+            $highestBid = $auction->bids()
+                ->where('status', 'approved')
+                ->orderBy('amount', 'desc')
+                ->first();
 
             if ($highestBid) {
                 // Ada pemenang
@@ -35,8 +38,9 @@ class CloseExpiredAuctions extends Command
                     ->first()
                     ?->update(['status' => 'completed']);
 
-                // Refund semua bidder yang kalah
+                // Refund semua bidder yang kalah (yang approved)
                 $losingBids = $auction->bids()
+                    ->where('status', 'approved')
                     ->where('user_id', '!=', $highestBid->user_id)
                     ->get()
                     ->groupBy('user_id');
@@ -57,9 +61,9 @@ class CloseExpiredAuctions extends Command
 
                 $this->info("Auction [{$auction->title}] ended. Winner: {$highestBid->user->name}");
             } else {
-                // Tidak ada bid
+                // Tidak ada bid yang approved
                 $auction->update(['status' => 'ended']);
-                $this->info("Auction [{$auction->title}] ended with no bids.");
+                $this->info("Auction [{$auction->title}] ended with no approved bids.");
             }
         }
 

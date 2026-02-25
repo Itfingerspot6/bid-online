@@ -8,8 +8,7 @@ class Bid extends Model
 {
     //
 
-    // app/Models/Bid.php
-protected $fillable = ['auction_id', 'user_id', 'amount'];
+    protected $fillable = ['auction_id', 'user_id', 'amount', 'status'];
 
 public function auction()
 {

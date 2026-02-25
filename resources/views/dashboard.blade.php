@@ -91,7 +91,16 @@
                                 <p class="text-white font-medium truncate">{{ $bid->auction->title }}</p>
                                 <p class="text-amber-400 text-sm">Bid: Rp {{ number_format($bid->amount, 0, ',', '.') }}</p>
                             </div>
-                            <span class="text-xs text-zinc-500">{{ $bid->created_at->diffForHumans() }}</span>
+                            <div class="flex flex-col items-end gap-1">
+                                @if($bid->status === 'pending')
+                                    <span class="text-xs px-2 py-1 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">Pending</span>
+                                @elseif($bid->status === 'approved')
+                                    <span class="text-xs px-2 py-1 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">Approved</span>
+                                @else
+                                    <span class="text-xs px-2 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">Rejected</span>
+                                @endif
+                                <span class="text-xs text-zinc-500">{{ $bid->created_at->diffForHumans() }}</span>
+                            </div>
                         </a>
                     @endforeach
                 </div>

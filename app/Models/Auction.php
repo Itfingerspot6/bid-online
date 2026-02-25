@@ -40,6 +40,11 @@ public function bids()
     return $this->hasMany(Bid::class);
 }
 
+public function approvedBids()
+{
+    return $this->hasMany(Bid::class)->where('status', 'approved');
+}
+
 public function transaction()
 {
     return $this->hasOne(Transaction::class);
@@ -47,6 +52,8 @@ public function transaction()
 
 public function highestBid()
 {
-    return $this->hasOne(Bid::class)->ofMany('amount', 'max');
+    return $this->hasOne(Bid::class)
+        ->where('status', 'approved')
+        ->ofMany('amount', 'max');
 }
 }

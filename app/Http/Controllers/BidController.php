@@ -39,55 +39,22 @@ class BidController extends Controller
             return back()->withErrors(['amount' => 'Saldo kamu tidak cukup. Silakan deposit terlebih dahulu.']);
         }
 
-        // Refund bid sebelumnya jika ada
-        $previousBid = Bid::where('auction_id', $auction->id)
-            ->where('user_id', $user->id)
-            ->latest()
-            ->first();
+        // Tidak langsung kurangi saldo, menunggu approval admin
 
-        if ($previousBid) {
-            $user->increment('balance', $previousBid->amount);
-
-            Transaction::create([
-                'buyer_id'    => $user->id,
-                'seller_id'   => $auction->user_id,
-                'auction_id'  => $auction->id,
-                'amount'      => $previousBid->amount,
-                'status'      => 'completed',
-                'payment_ref' => 'REFUND-' . strtoupper(uniqid()),
-            ]);
-        }
-
-        // Kurangi saldo
-        $user->decrement('balance', $request->amount);
-
-        // Simpan bid
+        // Simpan bid dengan status pending
         Bid::create([
             'auction_id' => $auction->id,
             'user_id'    => $user->id,
             'amount'     => $request->amount,
+            'status'     => 'pending',
         ]);
 
-        // Update harga lelang
-        $auction->update(['current_price' => $request->amount]);
-
-        // Catat transaksi
-        Transaction::create([
-            'buyer_id'    => $user->id,
-            'seller_id'   => $auction->user_id,
-            'auction_id'  => $auction->id,
-            'amount'      => $request->amount,
-            'status'      => 'pending',
-            'payment_ref' => 'BID-' . strtoupper(uniqid()),
-        ]);
-
-        // Cek apakah bid mencapai buy_it_now price
+        // Cek apakah bid mencapai buy_now_price
         if ($auction->buy_now_price && $request->amount >= $auction->buy_now_price) {
-            $this->closeAuction($auction, $user);
-            return back()->with('success', '🎉 Selamat! Kamu memenangkan lelang ini dengan harga Buy Now!');
+            return back()->with('success', '🎉 Bid Buy Now berhasil diajukan! Jika admin menyetujui, kamu akan langsung memenangkan lelang ini!');
         }
 
-        return back()->with('success', 'Bid berhasil dipasang!');
+        return back()->with('success', 'Bid berhasil diajukan! Menunggu persetujuan admin.');
     }
 
     private function closeAuction(Auction $auction, $winner)
