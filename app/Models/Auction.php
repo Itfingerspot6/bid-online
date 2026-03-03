@@ -3,9 +3,15 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\ProxyBid; // Added this line for the new relationship
 
 class Auction extends Model
 {
+    public function proxyBids()
+    {
+        return $this->hasMany(ProxyBid::class);
+    }
+
     //
     // app/Models/Auction.php
 protected $fillable = [

@@ -52,6 +52,35 @@ class BidController extends Controller
         }
     }
 
+    public function setProxyBid(Request $request, Auction $auction)
+    {
+        $request->validate([
+            'max_amount' => 'required|numeric|min:' . ($auction->current_price + $auction->min_bid_increment),
+        ]);
+
+        if ($auction->status !== 'active') {
+            return back()->withErrors(['max_amount' => 'Lelang ini tidak sedang aktif.']);
+        }
+
+        if ($auction->user_id === auth()->id()) {
+            return back()->withErrors(['max_amount' => 'Kamu tidak bisa bid lelang milikmu sendiri.']);
+        }
+
+        \App\Models\ProxyBid::updateOrCreate(
+            ['auction_id' => $auction->id, 'user_id' => auth()->id()],
+            ['max_amount' => $request->max_amount, 'is_active' => true]
+        );
+
+        // Langsung picu auto-bid jika proxy bid baru ini lebih tinggi dari harga saat ini 
+        // tapi user bukan penawar tertinggi sekarang
+        $highestBid = $auction->highestBid;
+        if (!$highestBid || $highestBid->user_id !== auth()->id()) {
+            app(\App\Services\AuctionService::class)->placeBid($auction, auth()->user(), $auction->current_price + $auction->min_bid_increment);
+        }
+
+        return back()->with('success', 'Proxy Bid berhasil diatur! Sistem akan otomatis nge-bid untukmu.');
+    }
+
     private function closeAuction(Auction $auction, $winner)
     {
         $auction->update([

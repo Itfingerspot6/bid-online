@@ -31,6 +31,7 @@ Route::middleware('auth')->group(function () {
 
     // Bids
     Route::post('/auctions/{auction}/bids', [BidController::class, 'store'])->name('bids.store');
+    Route::post('/auctions/{auction}/proxy-bid', [BidController::class, 'setProxyBid'])->name('bids.proxy');
 
     // Transactions
     Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');

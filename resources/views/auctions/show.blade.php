@@ -3,7 +3,8 @@
 @section('title', $auction->title)
 
 @section('content')
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10" 
+     x-data="auctionRoom({{ $auction->id }}, {{ $auction->current_price }}, {{ $auction->min_bid_increment }})">
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
 
         {{-- Images --}}
@@ -65,9 +66,9 @@
 
             {{-- Price Info --}}
             <div class="mt-6 grid grid-cols-2 gap-4">
-                <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+                <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4 transition-all duration-500" :class="isPriceUpdated ? 'border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.1)]' : ''">
                     <p class="text-xs text-zinc-500">Harga Saat Ini</p>
-                    <p class="text-2xl font-semibold text-amber-400 mt-1">Rp {{ number_format($auction->current_price, 0, ',', '.') }}</p>
+                    <p class="text-2xl font-semibold text-amber-400 mt-1" x-text="formatCurrency(currentPrice)"></p>
                 </div>
                 <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
                     <p class="text-xs text-zinc-500">Min. Kenaikan Bid</p>
@@ -130,67 +131,6 @@
                 </div>
             </div>
 
-            <script>
-                function countdown(endTime) {
-                    return {
-                        days: 0,
-                        hours: 0,
-                        minutes: 0,
-                        seconds: 0,
-                        isUrgent: false,
-                        isCritical: false,
-                        isEnded: false,
-                        progress: 100,
-                        interval: null,
-
-                        init() {
-                            this.updateCountdown();
-                            this.interval = setInterval(() => {
-                                this.updateCountdown();
-                            }, 1000);
-                        },
-
-                        updateCountdown() {
-                            const end = new Date(endTime).getTime();
-                            const now = new Date().getTime();
-                            const distance = end - now;
-
-                            if (distance < 0) {
-                                if (!this.isEnded) {
-                                    this.isEnded = true;
-                                    window.dispatchEvent(new CustomEvent('countdown-ended'));
-                                }
-                                this.days = 0;
-                                this.hours = 0;
-                                this.minutes = 0;
-                                this.seconds = 0;
-                                this.progress = 0;
-                                clearInterval(this.interval);
-                                return;
-                            }
-
-                            this.days = Math.floor(distance / (1000 * 60 * 60 * 24));
-                            this.hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                            this.minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                            this.seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-                            // Urgency Checks
-                            this.isUrgent = distance < (60 * 60 * 1000); // < 1 hour
-                            this.isCritical = distance < (5 * 60 * 1000); // < 5 mins
-                            
-                            // Simple progress estimation (not perfect without start_time)
-                            this.progress = Math.max(0, (distance / (24 * 60 * 60 * 1000)) * 100); 
-                        },
-
-                        formatNumber(n) {
-                            return n.toString().padStart(2, '0');
-                        }
-                    }
-                }
-            </script>
-
-            
-
             {{-- Bid Form --}}
             @if($auction->status === 'active')
                 @auth
@@ -204,8 +144,8 @@
                                     name="amount"
                                     id="bid-amount"
                                     :disabled="isEnded"
-                                    min="{{ $auction->current_price + $auction->min_bid_increment }}"
-                                    value="{{ $auction->current_price + $auction->min_bid_increment }}"
+                                    :min="currentPrice + minIncrement"
+                                    :value="currentPrice + minIncrement"
                                     class="flex-1 bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                 <button type="submit" 
@@ -234,6 +174,55 @@
                                 @endif
                             </div>
                         </form>
+
+                        {{-- Proxy Bid Form --}}
+                        <div x-data="{ showProxy: false }" class="mt-8 pt-6 border-t border-zinc-800">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h3 class="text-white font-medium">Auto-Bid (Proxy Bidding)</h3>
+                                    <p class="text-xs text-zinc-500">Biar sistem yang nge-bid otomatis buat kamu sampai batas tertentu.</p>
+                                </div>
+                                <button @click="showProxy = !showProxy" type="button" class="text-xs font-bold text-amber-400 hover:text-amber-300 uppercase tracking-widest">
+                                    <span x-show="!showProxy">Atur Auto-Bid</span>
+                                    <span x-show="showProxy">Tutup</span>
+                                </button>
+                            </div>
+
+                            <div x-show="showProxy" x-collapse x-cloak class="mt-4 bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+                                @php
+                                    $myProxy = $auction->proxyBids()->where('user_id', auth()->id())->first();
+                                @endphp
+
+                                @if($myProxy && $myProxy->is_active)
+                                    <div class="flex items-center justify-between mb-4 p-3 bg-amber-400/10 border border-amber-400/20 rounded-lg">
+                                        <div class="flex items-center gap-2">
+                                            <span class="flex h-2 w-2 rounded-full bg-amber-400"></span>
+                                            <p class="text-xs text-amber-400 font-medium">Auto-Bid Aktif: <span class="font-bold">Rp {{ number_format($myProxy->max_amount, 0, ',', '.') }}</span></p>
+                                        </div>
+                                    </div>
+                                @endif
+
+                                <form action="{{ route('bids.proxy', $auction) }}" method="POST">
+                                    @csrf
+                                    <label class="block text-[10px] text-zinc-500 uppercase tracking-widest mb-2">Batas Maksimal Bid Kamu</label>
+                                    <div class="flex gap-2">
+                                        <input
+                                            type="number"
+                                            name="max_amount"
+                                            :min="currentPrice + minIncrement"
+                                            placeholder="Masukkan harga maksimal..."
+                                            class="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400"
+                                        >
+                                        <button type="submit" class="px-4 py-2 bg-zinc-800 text-white text-xs font-bold rounded-lg hover:bg-zinc-700 transition-colors">
+                                            Simpan
+                                        </button>
+                                    </div>
+                                    <p class="mt-2 text-[10px] text-zinc-600 leading-tight italic">
+                                        *Sistem akan otomatis nge-bid sedikit di atas penawar lain sampai mencapai harga maksimal ini.
+                                    </p>
+                                </form>
+                            </div>
+                        </div>
                     </div>
                 @else
                     <div class="mt-6 p-4 bg-zinc-900 border border-zinc-800 rounded-xl text-center">
@@ -254,42 +243,144 @@
     {{-- Bid History --}}
     <div class="mt-12">
         <h2 class="font-display text-2xl text-white mb-6">Riwayat Bid</h2>
-        @if($auction->bids->count() > 0)
-            <div class="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-                <table class="w-full text-sm">
-                    <thead class="border-b border-zinc-800">
-                        <tr>
-                            <th class="text-left px-6 py-4 text-zinc-500 font-medium">Bidder</th>
-                            <th class="text-left px-6 py-4 text-zinc-500 font-medium">Jumlah</th>
-                            <th class="text-left px-6 py-4 text-zinc-500 font-medium">Status</th>
-                            <th class="text-left px-6 py-4 text-zinc-500 font-medium">Waktu</th>
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+            <table class="w-full text-sm">
+                <thead class="border-b border-zinc-800">
+                    <tr>
+                        <th class="text-left px-6 py-4 text-zinc-500 font-medium">Bidder</th>
+                        <th class="text-left px-6 py-4 text-zinc-500 font-medium">Jumlah</th>
+                        <th class="text-left px-6 py-4 text-zinc-500 font-medium">Status</th>
+                        <th class="text-left px-6 py-4 text-zinc-500 font-medium">Waktu</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-zinc-800" id="bid-history-list">
+                    <template x-for="(bid, index) in bids" :key="index">
+                        <tr :class="index === 0 ? 'bg-amber-400/5' : ''" class="animate-in fade-in slide-in-from-left-2 duration-500">
+                            <td class="px-6 py-4 text-zinc-300">
+                                <span x-show="index === 0">🏆 </span><span x-text="bid.user_name"></span>
+                            </td>
+                            <td class="px-6 py-4 text-amber-400 font-semibold" x-text="formatCurrency(bid.amount)"></td>
+                            <td class="px-6 py-4">
+                                <span class="text-xs px-2 py-1 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">Approved</span>
+                            </td>
+                            <td class="px-6 py-4 text-zinc-500" x-text="bid.created_at"></td>
                         </tr>
-                    </thead>
-                    <tbody class="divide-y divide-zinc-800">
-                        @foreach($auction->bids->sortByDesc('amount') as $bid)
-                            <tr class="{{ $loop->first && $bid->status === 'approved' ? 'bg-amber-400/5' : '' }}">
-                                <td class="px-6 py-4 text-zinc-300">
-                                    {{ $loop->first && $bid->status === 'approved' ? '🏆 ' : '' }}{{ $bid->user->name }}
-                                </td>
-                                <td class="px-6 py-4 text-amber-400 font-semibold">Rp {{ number_format($bid->amount, 0, ',', '.') }}</td>
-                                <td class="px-6 py-4">
-                                    @if($bid->status === 'pending')
-                                        <span class="text-xs px-2 py-1 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">Pending</span>
-                                    @elseif($bid->status === 'approved')
-                                        <span class="text-xs px-2 py-1 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">Approved</span>
-                                    @else
-                                        <span class="text-xs px-2 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">Rejected</span>
-                                    @endif
-                                </td>
-                                <td class="px-6 py-4 text-zinc-500">{{ $bid->created_at->diffForHumans() }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+                    </template>
+                    @foreach($auction->bids->where('status', 'approved')->sortByDesc('amount') as $bid)
+                        <tr x-show="bids.length === 0" class="{{ $loop->first ? 'bg-amber-400/5' : '' }}">
+                            <td class="px-6 py-4 text-zinc-300">
+                                {{ $loop->first ? '🏆 ' : '' }}{{ $bid->user->name }}
+                            </td>
+                            <td class="px-6 py-4 text-amber-400 font-semibold">Rp {{ number_format($bid->amount, 0, ',', '.') }}</td>
+                            <td class="px-6 py-4">
+                                <span class="text-xs px-2 py-1 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">Approved</span>
+                            </td>
+                            <td class="px-6 py-4 text-zinc-500">{{ $bid->created_at->diffForHumans() }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+            <div x-show="bids.length === 0 && {{ $auction->bids->where('status', 'approved')->count() }} === 0" class="p-6 text-center">
+                <p class="text-zinc-600">Belum ada bid. Jadilah yang pertama!</p>
             </div>
-        @else
-            <p class="text-zinc-600">Belum ada bid. Jadilah yang pertama!</p>
-        @endif
+        </div>
     </div>
 </div>
+
+<script>
+    function auctionRoom(auctionId, initialPrice, minIncrement) {
+        return {
+            currentPrice: initialPrice,
+            minIncrement: minIncrement,
+            bids: [],
+            isPriceUpdated: false,
+
+            init() {
+                window.Echo.channel(`auctions.${auctionId}`)
+                    .listen('BidPlaced', (e) => {
+                        this.currentPrice = e.current_price;
+                        this.bids.unshift({
+                            amount: e.amount,
+                            user_name: e.user_name,
+                            created_at: e.created_at
+                        });
+                        
+                        // Flash effect
+                        this.isPriceUpdated = true;
+                        setTimeout(() => this.isPriceUpdated = false, 2000);
+
+                        // Toast Notification
+                        if (typeof window.showToast === 'function') {
+                            window.showToast(`Bid baru masuk: Rp ${e.amount.toLocaleString('id-ID')}`);
+                        }
+                    });
+            },
+
+            formatCurrency(val) {
+                return new Intl.NumberFormat('id-ID', {
+                    style: 'currency',
+                    currency: 'IDR',
+                    minimumFractionDigits: 0
+                }).format(val).replace('IDR', 'Rp');
+            }
+        }
+    }
+
+    function countdown(endTime) {
+        return {
+            days: 0,
+            hours: 0,
+            minutes: 0,
+            seconds: 0,
+            isUrgent: false,
+            isCritical: false,
+            isEnded: false,
+            progress: 100,
+            interval: null,
+
+            init() {
+                this.updateCountdown();
+                this.interval = setInterval(() => {
+                    this.updateCountdown();
+                }, 1000);
+            },
+
+            updateCountdown() {
+                const end = new Date(endTime).getTime();
+                const now = new Date().getTime();
+                const distance = end - now;
+
+                if (distance < 0) {
+                    if (!this.isEnded) {
+                        this.isEnded = true;
+                        window.dispatchEvent(new CustomEvent('countdown-ended'));
+                    }
+                    this.days = 0;
+                    this.hours = 0;
+                    this.minutes = 0;
+                    this.seconds = 0;
+                    this.progress = 0;
+                    clearInterval(this.interval);
+                    return;
+                }
+
+                this.days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                this.hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                this.minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                this.seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                // Urgency Checks
+                this.isUrgent = distance < (60 * 60 * 1000); // < 1 hour
+                this.isCritical = distance < (5 * 60 * 1000); // < 5 mins
+                
+                // Simple progress estimation
+                this.progress = Math.max(0, (distance / (24 * 60 * 60 * 1000)) * 100); 
+            },
+
+            formatNumber(n) {
+                return n.toString().padStart(2, '0');
+            }
+        }
+    }
+</script>
 @endsection
