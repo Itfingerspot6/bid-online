@@ -34,6 +34,16 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasMany(Transaction::class, 'buyer_id');
     }
 
+    public function watchlists()
+    {
+        return $this->hasMany(Watchlist::class);
+    }
+
+    public function watchAuctions()
+    {
+        return $this->belongsToMany(Auction::class, 'watchlists');
+    }
+
     public function canAccessPanel(Panel $panel): bool
     {
         return $this->role === 'admin';

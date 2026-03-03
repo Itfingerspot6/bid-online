@@ -11,15 +11,37 @@ class AuctionController extends Controller
 {
 public function index(Request $request)
 {
-    $categories = Category::all();
+    $query = Auction::with(['seller', 'category'])
+        ->where('status', 'active');
 
-    $auctions = Auction::with(['seller', 'category'])
-        ->where('status', 'active')
-        ->when($request->category, function ($query) use ($request) {
-            $query->whereHas('category', fn($q) => $q->where('slug', $request->category));
-        })
-        ->latest()
-        ->paginate(12);
+    if ($request->filled('q')) {
+        $query->where('title', 'like', '%' . $request->q . '%');
+    }
+
+    if ($request->filled('category')) {
+        $query->whereHas('category', fn($q) => $q->where('slug', $request->category));
+    }
+
+    if ($request->filled('min_price')) {
+        $query->where('current_price', '>=', $request->min_price);
+    }
+
+    if ($request->filled('max_price')) {
+        $query->where('current_price', '<=', $request->max_price);
+    }
+
+    if ($request->sort === 'price_low') {
+        $query->orderBy('current_price', 'asc');
+    } elseif ($request->sort === 'price_high') {
+        $query->orderBy('current_price', 'desc');
+    } elseif ($request->sort === 'newest') {
+        $query->orderBy('created_at', 'desc');
+    } else {
+        $query->orderBy('end_time', 'asc');
+    }
+
+    $auctions = $query->paginate(12)->withQueryString();
+    $categories = Category::all();
 
     return view('auctions.index', compact('auctions', 'categories'));
 }

@@ -35,15 +35,30 @@
             <span class="text-xs text-amber-400 uppercase tracking-widest">{{ $auction->category->name }}</span>
             <h1 class="font-display text-3xl text-white mt-2">{{ $auction->title }}</h1>
 
-            <div class="mt-2 flex items-center gap-2">
-                @if($auction->status === 'active')
-                    <span class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
-                        <span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
-                        Aktif
-                    </span>
-                @elseif($auction->status === 'ended')
-                    <span class="text-xs px-2 py-1 rounded-full bg-zinc-800 text-zinc-500">Selesai</span>
-                @endif
+            <div class="mt-2 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    @if($auction->status === 'active')
+                        <span class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
+                            <span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                            Aktif
+                        </span>
+                    @elseif($auction->status === 'ended')
+                        <span class="text-xs px-2 py-1 rounded-full bg-zinc-800 text-zinc-500">Selesai</span>
+                    @endif
+                </div>
+
+                @auth
+                    <form action="{{ route('watchlist.toggle', $auction) }}" method="POST">
+                        @csrf
+                        @php
+                            $isWatched = auth()->user()->watchlists()->where('auction_id', $auction->id)->exists();
+                        @endphp
+                        <button type="submit" class="flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-xl border transition-all {{ $isWatched ? 'bg-amber-400 border-amber-400 text-zinc-950 shadow-[0_0_15px_rgba(251,191,36,0.3)]' : 'bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-white' }}">
+                            <svg class="w-4 h-4 {{ $isWatched ? 'fill-current' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                            {{ $isWatched ? 'Tersimpan' : 'Simpan' }}
+                        </button>
+                    </form>
+                @endauth
             </div>
 
             <p class="text-zinc-400 mt-4 leading-relaxed">{{ $auction->description }}</p>

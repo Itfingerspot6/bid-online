@@ -56,4 +56,9 @@ public function highestBid()
         ->where('status', 'approved')
         ->ofMany('amount', 'max');
 }
+
+public function watchlists()
+{
+    return $this->hasMany(Watchlist::class);
+}
 }

@@ -32,6 +32,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
     Route::post('/transactions/deposit', [TransactionController::class, 'deposit'])->name('transactions.deposit');
     Route::post('/transactions/{transaction}/pay', [TransactionController::class, 'pay'])->name('transactions.pay');
+
+    // Watchlist
+    Route::post('/auctions/{auction}/watchlist', [\App\Http\Controllers\WatchlistController::class, 'toggle'])->name('watchlist.toggle');
 });
 
 Route::get('/auctions', [AuctionController::class, 'index'])->name('auctions.index');

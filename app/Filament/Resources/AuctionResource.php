@@ -18,90 +18,113 @@ class AuctionResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
+    protected static ?string $navigationGroup = 'Lelang';
+
+    protected static ?int $navigationSort = 1;
+
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getModel()::where('status', 'active')->count() ?: null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'success';
+    }
+
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\Select::make('user_id')
-                    ->label('Seller')
-                    ->options(User::all()->pluck('name', 'id'))
-                    ->searchable()
-                    ->required(),
+                Forms\Components\Section::make('Informasi Dasar')
+                    ->schema([
+                        Forms\Components\TextInput::make('title')
+                            ->label('Judul')
+                            ->required()
+                            ->maxLength(255)
+                            ->live(onBlur: true)
+                            ->afterStateUpdated(fn ($state, callable $set) => 
+                                $set('slug', \Illuminate\Support\Str::slug($state) . '-' . \Illuminate\Support\Str::random(5))
+                            ),
 
-                Forms\Components\Select::make('category_id')
-                    ->label('Kategori')
-                    ->options(Category::all()->pluck('name', 'id'))
-                    ->searchable()
-                    ->required(),
+                        Forms\Components\TextInput::make('slug')
+                            ->required()
+                            ->maxLength(255)
+                            ->unique(ignoreRecord: true),
 
-                Forms\Components\Select::make('winner_id')
-                    ->label('Pemenang')
-                    ->options(User::all()->pluck('name', 'id'))
-                    ->searchable()
-                    ->default(null),
+                        Forms\Components\Select::make('category_id')
+                            ->relationship('category', 'name')
+                            ->label('Kategori')
+                            ->searchable()
+                            ->required(),
 
-                Forms\Components\TextInput::make('title')
-                    ->label('Judul')
-                    ->required()
-                    ->maxLength(255)
-                    ->live(onBlur: true)
-                    ->afterStateUpdated(fn ($state, callable $set) => 
-                        $set('slug', \Illuminate\Support\Str::slug($state) . '-' . \Illuminate\Support\Str::random(5))
-                    ),
+                        Forms\Components\Select::make('user_id')
+                            ->relationship('seller', 'name')
+                            ->label('Seller')
+                            ->searchable()
+                            ->required(),
 
-                Forms\Components\TextInput::make('slug')
-                    ->required()
-                    ->maxLength(255)
-                    ->unique(ignoreRecord: true),
+                        Forms\Components\Textarea::make('description')
+                            ->label('Deskripsi')
+                            ->required()
+                            ->columnSpanFull(),
+                    ])->columns(2),
 
-                Forms\Components\Textarea::make('description')
-                    ->label('Deskripsi')
-                    ->required()
-                    ->columnSpanFull(),
+                Forms\Components\Section::make('Harga & Penawaran')
+                    ->schema([
+                        Forms\Components\TextInput::make('start_price')
+                            ->label('Harga Awal')
+                            ->required()
+                            ->numeric()
+                            ->prefix('Rp'),
 
-                Forms\Components\TextInput::make('start_price')
-                    ->label('Harga Awal')
-                    ->required()
-                    ->numeric()
-                    ->prefix('Rp'),
+                        Forms\Components\TextInput::make('current_price')
+                            ->label('Harga Saat Ini')
+                            ->required()
+                            ->numeric()
+                            ->prefix('Rp'),
 
-                Forms\Components\TextInput::make('current_price')
-                    ->label('Harga Saat Ini')
-                    ->required()
-                    ->numeric()
-                    ->prefix('Rp'),
+                        Forms\Components\TextInput::make('min_bid_increment')
+                            ->label('Min. Kenaikan Bid')
+                            ->required()
+                            ->numeric()
+                            ->default(1000)
+                            ->prefix('Rp'),
 
-                Forms\Components\TextInput::make('min_bid_increment')
-                    ->label('Min. Kenaikan Bid')
-                    ->required()
-                    ->numeric()
-                    ->default(1000)
-                    ->prefix('Rp'),
+                        Forms\Components\TextInput::make('buy_now_price')
+                            ->label('Harga Batas / Buy Now')
+                            ->numeric()
+                            ->prefix('Rp')
+                            ->default(null)
+                            ->helperText('Opsional - lelang langsung selesai jika bid mencapai harga ini'),
+                    ])->columns(2),
 
-                Forms\Components\TextInput::make('buy_now_price')
-                    ->label('Harga Batas / Buy Now')
-                    ->numeric()
-                    ->prefix('Rp')
-                    ->default(null)
-                    ->helperText('Opsional - lelang langsung selesai jika bid mencapai harga ini'),
+                Forms\Components\Section::make('Status & Waktu')
+                    ->schema([
+                        Forms\Components\DateTimePicker::make('start_time')
+                            ->label('Waktu Mulai')
+                            ->required(),
 
-                Forms\Components\DateTimePicker::make('start_time')
-                    ->label('Waktu Mulai')
-                    ->required(),
+                        Forms\Components\DateTimePicker::make('end_time')
+                            ->label('Waktu Selesai')
+                            ->required(),
 
-                Forms\Components\DateTimePicker::make('end_time')
-                    ->label('Waktu Selesai')
-                    ->required(),
+                        Forms\Components\Select::make('status')
+                            ->options([
+                                'draft'     => 'Draft',
+                                'active'    => 'Active',
+                                'ended'     => 'Ended',
+                                'closed'    => 'Closed',
+                                'cancelled' => 'Cancelled',
+                            ])
+                            ->required(),
 
-                Forms\Components\Select::make('status')
-                    ->options([
-                        'draft'     => 'Draft',
-                        'active'    => 'Active',
-                        'ended'     => 'Ended',
-                        'closed'    => 'Closed',
-                        'cancelled' => 'Cancelled',
-                    ])
-                    ->required(),
+                        Forms\Components\Select::make('winner_id')
+                            ->relationship('winner', 'name')
+                            ->label('Pemenang')
+                            ->searchable()
+                            ->default(null),
+                    ])->columns(2),
             ]);
     }
 

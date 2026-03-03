@@ -4,27 +4,87 @@
 
 @section('content')
 
-{{-- Hero --}}
-<div class="border-b border-zinc-800 py-16">
+{{-- Header --}}
+<div class="border-b border-white/5 bg-zinc-950 py-16">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 class="font-display text-5xl text-white mb-3">Platform Lelang <span class="text-amber-400">Online</span></h1>
-        <p class="text-zinc-400 text-lg">Temukan barang terbaik dengan harga terbaik.</p>
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div>
+                <h1 class="font-display text-5xl text-white mb-3 tracking-tight">Temukan <span class="text-amber-400">Lelang</span> Impian</h1>
+                <p class="text-zinc-500 text-lg">Ribuan barang unik tersedia setiap hari.</p>
+            </div>
+            
+            {{-- Search Bar --}}
+            <form action="{{ route('auctions.index') }}" method="GET" class="w-full md:w-96 relative group">
+                <input type="text" name="q" value="{{ request('q') }}" placeholder="Cari barang lelang..." class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-amber-400 transition-all pl-14 group-focus-within:shadow-[0_0_20px_rgba(251,191,36,0.1)]">
+                <svg class="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500 group-focus-within:text-amber-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                @if(request('category')) <input type="hidden" name="category" value="{{ request('category') }}"> @endif
+            </form>
+        </div>
     </div>
 </div>
 
-{{-- Filter Kategori --}}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
-    <div class="flex gap-3 flex-wrap">
-        <a href="{{ route('auctions.index') }}" class="px-4 py-2 rounded-full text-sm {{ !request('category') ? 'bg-amber-400 text-zinc-950 font-semibold' : 'border border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-white' }} transition-all">
-            Semua
-        </a>
-        @foreach($categories as $category)
-            <a href="{{ route('auctions.index', ['category' => $category->slug]) }}" class="px-4 py-2 rounded-full text-sm {{ request('category') == $category->slug ? 'bg-amber-400 text-zinc-950 font-semibold' : 'border border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-white' }} transition-all">
-                {{ $category->name }}
-            </a>
-        @endforeach
-    </div>
-</div>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 pb-24">
+    <div class="flex flex-col lg:flex-row gap-8">
+        
+        {{-- Sidebar Filter --}}
+        <aside class="w-full lg:w-72 space-y-8">
+            <div class="glass-card p-6 rounded-[2rem] sticky top-24">
+                <h2 class="text-white font-bold mb-6 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+                    Filter & Urutan
+                </h2>
+
+                <form action="{{ route('auctions.index') }}" method="GET" class="space-y-8">
+                    @if(request('q')) <input type="hidden" name="q" value="{{ request('q') }}"> @endif
+
+                    {{-- Sort --}}
+                    <div>
+                        <label class="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-3">Urutkan</label>
+                        <select name="sort" onchange="this.form.submit()" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-300 focus:outline-none focus:border-amber-400">
+                            <option value="ending_soon" {{ request('sort') == 'ending_soon' ? 'selected' : '' }}>⌛ Berakhir Segera</option>
+                            <option value="newest" {{ request('sort') == 'newest' ? 'selected' : '' }}>✨ Terbaru</option>
+                            <option value="price_low" {{ request('sort') == 'price_low' ? 'selected' : '' }}>💰 Harga Terendah</option>
+                            <option value="price_high" {{ request('sort') == 'price_high' ? 'selected' : '' }}>💎 Harga Tertinggi</option>
+                        </select>
+                    </div>
+
+                    {{-- Kategori --}}
+                    <div>
+                        <label class="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-3">Kategori</label>
+                        <div class="space-y-2">
+                            <label class="flex items-center gap-3 group cursor-pointer">
+                                <input type="radio" name="category" value="" onchange="this.form.submit()" class="hidden peer" {{ !request('category') ? 'checked' : '' }}>
+                                <div class="w-4 h-4 rounded-full border border-zinc-700 peer-checked:border-[5px] peer-checked:border-amber-400 transition-all"></div>
+                                <span class="text-sm text-zinc-400 group-hover:text-white transition-colors peer-checked:text-white font-medium">Semua Kategori</span>
+                            </label>
+                            @foreach($categories as $cat)
+                                <label class="flex items-center gap-3 group cursor-pointer">
+                                    <input type="radio" name="category" value="{{ $cat->slug }}" onchange="this.form.submit()" class="hidden peer" {{ request('category') == $cat->slug ? 'checked' : '' }}>
+                                    <div class="w-4 h-4 rounded-full border border-zinc-700 peer-checked:border-[5px] peer-checked:border-amber-400 transition-all"></div>
+                                    <span class="text-sm text-zinc-400 group-hover:text-white transition-colors peer-checked:text-white font-medium">{{ $cat->name }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    {{-- Price Range --}}
+                    <div>
+                        <label class="text-[10px] text-zinc-500 uppercase font-black tracking-widest block mb-3">Rentang Harga (Rp)</label>
+                        <div class="space-y-3">
+                            <input type="number" name="min_price" value="{{ request('min_price') }}" placeholder="Min" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-amber-400">
+                            <input type="number" name="max_price" value="{{ request('max_price') }}" placeholder="Max" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-amber-400">
+                            <button type="submit" class="w-full py-2 bg-amber-400 text-zinc-950 text-xs font-bold rounded-xl hover:bg-amber-300 transition-colors mt-2">Terapkan</button>
+                            @if(request()->anyFilled(['q', 'category', 'min_price', 'max_price', 'sort']))
+                                <a href="{{ route('auctions.index') }}" class="block text-center text-[10px] text-zinc-500 hover:text-white transition-colors uppercase font-bold mt-4">Bersihkan Filter</a>
+                            @endif
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </aside>
+
+        {{-- Auction List --}}
+        <div class="flex-1">
 
 {{-- Auction Grid --}}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 pb-16">
@@ -33,7 +93,7 @@
             @foreach($auctions as $auction)
                 <a href="{{ route('auctions.show', $auction->slug) }}" class="group bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden hover:border-zinc-600 transition-all hover:-translate-y-1">
                     {{-- Image --}}
-                    <div class="aspect-square bg-zinc-800 overflow-hidden">
+                    <div class="aspect-square bg-zinc-800 overflow-hidden relative">
                         @if($auction->images && count($auction->images) > 0)
                             <img src="{{ Storage::url($auction->images[0]) }}" alt="{{ $auction->title }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                         @else
@@ -43,6 +103,18 @@
                                 </svg>
                             </div>
                         @endif
+
+                        @auth
+                            <form action="{{ route('watchlist.toggle', $auction) }}" method="POST" class="absolute top-3 right-3 z-20">
+                                @csrf
+                                @php
+                                    $isWatched = auth()->user()->watchlists()->where('auction_id', $auction->id)->exists();
+                                @endphp
+                                <button type="submit" class="w-8 h-8 flex items-center justify-center rounded-full glass-card border transition-all {{ $isWatched ? 'bg-amber-400 border-amber-400 text-zinc-950' : 'bg-black/50 border-white/10 text-white hover:bg-white/20' }}">
+                                    <svg class="w-4 h-4 {{ $isWatched ? 'fill-current' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                                </button>
+                            </form>
+                        @endauth
                     </div>
 
                     {{-- Info --}}
@@ -77,18 +149,22 @@
             @endforeach
         </div>
 
-        {{-- Pagination --}}
-        <div class="mt-10">
-            {{ $auctions->appends(['category' => request('category')])->links() }}
+                {{-- Pagination --}}
+                <div class="mt-16">
+                    {{ $auctions->links() }}
+                </div>
+            @else
+                <div class="glass-card rounded-[3rem] py-32 text-center w-full">
+                    <div class="w-24 h-24 bg-zinc-900 rounded-full flex items-center justify-center mx-auto mb-8">
+                        <svg class="w-12 h-12 text-zinc-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                    </div>
+                    <h3 class="text-2xl text-white font-bold mb-4">Tidak ada lelang ditemukan</h3>
+                    <p class="text-zinc-500 max-w-xs mx-auto">Coba sesuaikan filter atau kata kunci pencarian kamu.</p>
+                    <a href="{{ route('auctions.index') }}" class="inline-block mt-8 text-amber-400 font-bold border-b border-amber-400/30 hover:border-amber-400 pb-1 transition-all">Reset Pencarian</a>
+                </div>
+            @endif
         </div>
-    @else
-        <div class="text-center py-20 text-zinc-600">
-            <svg class="w-16 h-16 mx-auto mb-4 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-            </svg>
-            <p class="text-lg">Belum ada lelang tersedia.</p>
-        </div>
-    @endif
+    </div>
 </div>
 
 @endsection

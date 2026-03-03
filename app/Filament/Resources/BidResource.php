@@ -16,11 +16,17 @@ class BidResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-hand-raised';
 
-    protected static ?string $navigationLabel = 'Bids';
+    protected static ?string $navigationGroup = 'Keuangan';
 
-    protected static ?string $modelLabel = 'Bid';
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getModel()::where('status', 'pending')->count() ?: null;
+    }
 
-    protected static ?int $navigationSort = 3;
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
 
     public static function form(Form $form): Form
     {
@@ -29,14 +35,12 @@ class BidResource extends Resource
                 Forms\Components\Select::make('auction_id')
                     ->relationship('auction', 'title')
                     ->required()
-                    ->searchable()
-                    ->preload(),
+                    ->searchable(),
                 
                 Forms\Components\Select::make('user_id')
                     ->relationship('user', 'name')
                     ->required()
-                    ->searchable()
-                    ->preload(),
+                    ->searchable(),
                 
                 Forms\Components\TextInput::make('amount')
                     ->required()

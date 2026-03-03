@@ -18,6 +18,8 @@ class DashboardController extends Controller
             ->latest()
             ->get();
 
-        return view('dashboard', compact('myAuctions', 'myBids'));
+        $watchedAuctions = auth()->user()->watchAuctions()->with(['category', 'seller'])->latest()->get();
+
+        return view('dashboard', compact('myAuctions', 'myBids', 'watchedAuctions'));
     }
 }
