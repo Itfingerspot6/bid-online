@@ -169,16 +169,74 @@
                             </div>
                         @endif
                     </div>
-                    <div class="p-4">
+                    <div class="p-4" x-data="auctionTimer('{{ $auction->end_time }}')">
                         <h3 class="text-white font-medium line-clamp-1 group-hover:text-amber-400 transition-colors">{{ $auction->title }}</h3>
-                        <p class="text-amber-400 font-semibold mt-1">Rp {{ number_format($auction->current_price, 0, ',', '.') }}</p>
-                        <p class="text-zinc-500 text-xs mt-1">{{ \Carbon\Carbon::parse($auction->end_time)->diffForHumans() }}</p>
+                        
+                        <div class="flex items-center justify-between mt-3">
+                            <div>
+                                <p class="text-[10px] text-zinc-500 uppercase font-black">Harga</p>
+                                <p class="text-amber-400 font-bold">Rp {{ number_format($auction->current_price, 0, ',', '.') }}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-[10px] text-zinc-500 uppercase font-black">Berakhir</p>
+                                <p class="text-xs font-mono font-bold transition-colors" :class="isUrgent ? 'text-orange-500' : 'text-zinc-300'">
+                                    <span x-text="timeLeft"></span>
+                                </p>
+                            </div>
+                        </div>
+
+                        {{-- Progress Bar Small --}}
+                        <div class="w-full h-1 bg-white/5 rounded-full mt-3 overflow-hidden">
+                            <div class="h-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all duration-1000" :style="'width: ' + progress + '%'"></div>
+                        </div>
                     </div>
                 </a>
             @endforeach
         </div>
     </div>
 </div>
+
+<script>
+    function auctionTimer(endTime) {
+        return {
+            timeLeft: '',
+            isUrgent: false,
+            progress: 100,
+            interval: null,
+
+            init() {
+                this.update();
+                this.interval = setInterval(() => this.update(), 1000);
+            },
+
+            update() {
+                const end = new Date(endTime).getTime();
+                const now = new Date().getTime();
+                const distance = end - now;
+
+                if (distance < 0) {
+                    this.timeLeft = 'Selesai';
+                    this.progress = 0;
+                    clearInterval(this.interval);
+                    return;
+                }
+
+                const d = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const h = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const s = Math.floor((distance % (1000 * 60)) / 1000);
+
+                this.timeLeft = (d > 0 ? d + 'd ' : '') + 
+                                h.toString().padStart(2, '0') + ':' + 
+                                m.toString().padStart(2, '0') + ':' + 
+                                s.toString().padStart(2, '0');
+                
+                this.isUrgent = distance < (60 * 60 * 1000);
+                this.progress = Math.min(100, (distance / (24 * 60 * 60 * 1000)) * 100);
+            }
+        }
+    }
+</script>
 
 {{-- About --}}
 <div class="py-20">

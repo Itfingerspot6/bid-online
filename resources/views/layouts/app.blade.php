@@ -43,6 +43,10 @@
                             Transaksi
                             <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-amber-400 transition-all duration-300 group-hover:w-full"></span>
                         </a>
+                        <a href="{{ route('profile.edit') }}" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors relative group">
+                            Profil
+                            <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-amber-400 transition-all duration-300 group-hover:w-full"></span>
+                        </a>
                     @endauth
                 </div>
 
@@ -52,12 +56,23 @@
                             <span class="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Saldo Tersedia</span>
                             <span class="text-sm font-bold text-white">Rp {{ number_format(auth()->user()->balance, 0, ',', '.') }}</span>
                         </div>
-                        <form method="POST" action="{{ route('logout') }}">
-                            @csrf
-                            <button type="submit" class="btn-outline !py-2 !px-4 text-xs font-bold uppercase tracking-wider">
-                                Logout
-                            </button>
-                        </form>
+                        <div class="flex items-center gap-4 pl-4 border-l border-white/5">
+                            <a href="{{ route('profile.edit') }}" class="w-10 h-10 rounded-xl border border-amber-400/20 p-0.5 bg-zinc-900 group hover:border-amber-400/50 transition-all">
+                                @if(auth()->user()->avatar)
+                                    <img src="{{ Storage::url(auth()->user()->avatar) }}" class="w-full h-full object-cover rounded-[0.5rem]">
+                                @else
+                                    <div class="w-full h-full bg-zinc-800 flex items-center justify-center text-zinc-500 group-hover:text-amber-400 transition-colors">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                    </div>
+                                @endif
+                            </a>
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                                <button type="submit" class="btn-outline !py-2 !px-4 text-xs font-bold uppercase tracking-wider">
+                                    Logout
+                                </button>
+                            </form>
+                        </div>
                     @else
                         <a href="{{ route('login') }}" class="text-sm font-bold text-zinc-400 hover:text-white transition-colors">Login</a>
                         <a href="{{ route('register') }}" class="btn-primary">Daftar</a>

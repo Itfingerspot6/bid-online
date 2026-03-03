@@ -92,46 +92,149 @@
             @endif
 
             {{-- Timer --}}
-            <div class="mt-4 bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-                <p class="text-xs text-zinc-500">Berakhir</p>
-                <p class="text-white font-medium mt-1">{{ \Carbon\Carbon::parse($auction->end_time)->format('d M Y, H:i') }} WIB</p>
-                <p class="text-zinc-400 text-sm mt-1">{{ \Carbon\Carbon::parse($auction->end_time)->diffForHumans() }}</p>
+            <div x-data="countdown('{{ $auction->end_time }}')" class="mt-4">
+                <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5 relative overflow-hidden group">
+                    {{-- Progress Bar (Optional Visual) --}}
+                    <div class="absolute bottom-0 left-0 h-1 bg-amber-500/30 transition-all duration-1000" :style="'width: ' + progress + '%'"></div>
+                    
+                    <div class="flex items-center justify-between relative z-10">
+                        <div>
+                            <p class="text-[10px] text-zinc-500 uppercase tracking-[0.2em] font-black">Waktu Tersisa</p>
+                            <div class="flex items-baseline gap-1 mt-1 font-mono">
+                                <template x-if="days > 0">
+                                    <div class="flex items-baseline">
+                                        <span x-text="days" class="text-3xl font-bold text-white"></span>
+                                        <span class="text-xs text-zinc-500 ml-1 mr-2 uppercase">Hari</span>
+                                    </div>
+                                </template>
+                                <span x-text="formatNumber(hours)" class="text-3xl font-bold transition-colors duration-500" :class="isUrgent ? 'text-orange-500' : 'text-white'"></span>
+                                <span class="text-xl font-bold text-zinc-700 mx-0.5">:</span>
+                                <span x-text="formatNumber(minutes)" class="text-3xl font-bold transition-colors duration-500" :class="isUrgent ? 'text-orange-500' : 'text-white'"></span>
+                                <span class="text-xl font-bold text-zinc-700 mx-0.5">:</span>
+                                <span x-text="formatNumber(seconds)" class="text-3xl font-bold transition-colors duration-500" :class="isCritical ? 'text-red-500 animate-pulse' : (isUrgent ? 'text-orange-500' : 'text-amber-400')"></span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[10px] text-zinc-600 uppercase tracking-widest">Berakhir Pada</p>
+                            <p class="text-xs text-zinc-400 font-medium mt-1">{{ \Carbon\Carbon::parse($auction->end_time)->format('H:i') }} WIB</p>
+                            <p class="text-[10px] text-zinc-500">{{ \Carbon\Carbon::parse($auction->end_time)->format('d M Y') }}</p>
+                        </div>
+                    </div>
+
+                    {{-- Urgent Status Alert --}}
+                    <template x-if="isCritical && !isEnded">
+                        <div class="mt-3 py-1 px-3 bg-red-500/10 border border-red-500/20 rounded-lg text-center">
+                            <p class="text-[10px] text-red-500 font-bold uppercase tracking-widest animate-pulse">⚡ Segera Berakhir! Segera pasang penawaran!</p>
+                        </div>
+                    </template>
+                </div>
             </div>
+
+            <script>
+                function countdown(endTime) {
+                    return {
+                        days: 0,
+                        hours: 0,
+                        minutes: 0,
+                        seconds: 0,
+                        isUrgent: false,
+                        isCritical: false,
+                        isEnded: false,
+                        progress: 100,
+                        interval: null,
+
+                        init() {
+                            this.updateCountdown();
+                            this.interval = setInterval(() => {
+                                this.updateCountdown();
+                            }, 1000);
+                        },
+
+                        updateCountdown() {
+                            const end = new Date(endTime).getTime();
+                            const now = new Date().getTime();
+                            const distance = end - now;
+
+                            if (distance < 0) {
+                                if (!this.isEnded) {
+                                    this.isEnded = true;
+                                    window.dispatchEvent(new CustomEvent('countdown-ended'));
+                                }
+                                this.days = 0;
+                                this.hours = 0;
+                                this.minutes = 0;
+                                this.seconds = 0;
+                                this.progress = 0;
+                                clearInterval(this.interval);
+                                return;
+                            }
+
+                            this.days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                            this.hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                            this.minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                            this.seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                            // Urgency Checks
+                            this.isUrgent = distance < (60 * 60 * 1000); // < 1 hour
+                            this.isCritical = distance < (5 * 60 * 1000); // < 5 mins
+                            
+                            // Simple progress estimation (not perfect without start_time)
+                            this.progress = Math.max(0, (distance / (24 * 60 * 60 * 1000)) * 100); 
+                        },
+
+                        formatNumber(n) {
+                            return n.toString().padStart(2, '0');
+                        }
+                    }
+                }
+            </script>
 
             
 
             {{-- Bid Form --}}
             @if($auction->status === 'active')
                 @auth
-                    <form method="POST" action="{{ route('bids.store', $auction) }}" class="mt-6">
-                        @csrf
-                        <label class="block text-sm text-zinc-400 mb-2">Jumlah Bid Kamu</label>
-                        <div class="flex gap-3">
-                            <input
-                                type="number"
-                                name="amount"
-                                id="bid-amount"
-                                min="{{ $auction->current_price + $auction->min_bid_increment }}"
-                                value="{{ $auction->current_price + $auction->min_bid_increment }}"
-                                class="flex-1 bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-400 transition-colors"
-                            >
-                            <button type="submit" class="px-6 py-3 bg-amber-400 text-zinc-950 font-semibold rounded-xl hover:bg-amber-300 transition-colors">
-                                Bid Sekarang
-                            </button>
-                        </div>
-                        @error('amount')
-                            <p class="text-red-400 text-sm mt-2">{{ $message }}</p>
-                        @enderror
-                        
-                        <div class="flex items-center justify-between mt-2">
-                            <p class="text-zinc-600 text-xs">Saldo kamu: Rp {{ number_format(auth()->user()->balance, 0, ',', '.') }}</p>
-                            @if($auction->buy_now_price)
-                                <button type="button" onclick="document.getElementById('bid-amount').value = {{ $auction->buy_now_price }}" class="text-xs text-amber-400 hover:text-amber-300 transition-colors">
-                                    ⚡ Set ke Buy Now Price
+                    <div x-data="{ isEnded: false }" @countdown-ended.window="isEnded = true">
+                        <form method="POST" action="{{ route('bids.store', $auction) }}" class="mt-6">
+                            @csrf
+                            <label class="block text-sm text-zinc-400 mb-2">Jumlah Bid Kamu</label>
+                            <div class="flex gap-3">
+                                <input
+                                    type="number"
+                                    name="amount"
+                                    id="bid-amount"
+                                    :disabled="isEnded"
+                                    min="{{ $auction->current_price + $auction->min_bid_increment }}"
+                                    value="{{ $auction->current_price + $auction->min_bid_increment }}"
+                                    class="flex-1 bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                <button type="submit" 
+                                    :disabled="isEnded"
+                                    class="px-6 py-3 bg-amber-400 text-zinc-950 font-semibold rounded-xl hover:bg-amber-300 transition-all disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed transform active:scale-95"
+                                    :class="isEnded ? '' : 'shadow-[0_0_15px_rgba(245,158,11,0.3)] hover:shadow-amber-500/20'"
+                                >
+                                    <span x-show="!isEnded">Bid Sekarang</span>
+                                    <span x-show="isEnded">Lelang Selesai</span>
                                 </button>
-                            @endif
-                        </div>
-                    </form>
+                            </div>
+                            @error('amount')
+                                <p class="text-red-400 text-sm mt-2">{{ $message }}</p>
+                            @enderror
+                            
+                            <div class="flex items-center justify-between mt-2">
+                                <p class="text-zinc-600 text-xs text-zinc-500">Saldo kamu: <span class="font-bold">Rp {{ number_format(auth()->user()->balance, 0, ',', '.') }}</span></p>
+                                @if($auction->buy_now_price)
+                                    <button type="button" 
+                                        x-show="!isEnded"
+                                        onclick="document.getElementById('bid-amount').value = {{ $auction->buy_now_price }}" 
+                                        class="text-xs text-amber-500/80 hover:text-amber-400 transition-colors font-bold uppercase tracking-tighter"
+                                    >
+                                        ⚡ Set ke Buy Now Price
+                                    </button>
+                                @endif
+                            </div>
+                        </form>
+                    </div>
                 @else
                     <div class="mt-6 p-4 bg-zinc-900 border border-zinc-800 rounded-xl text-center">
                         <p class="text-zinc-400 text-sm mb-3">Login untuk ikut lelang</p>

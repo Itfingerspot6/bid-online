@@ -118,36 +118,86 @@
                     </div>
 
                     {{-- Info --}}
-                    <div class="p-4">
-                        <span class="text-xs text-zinc-500 uppercase tracking-wider">{{ $auction->category->name }}</span>
-                        <h3 class="text-white font-medium mt-1 line-clamp-2 group-hover:text-amber-400 transition-colors">{{ $auction->title }}</h3>
+                    <div class="p-4" x-data="auctionTimer('{{ $auction->end_time }}')">
+                        <span class="text-[10px] text-zinc-500 uppercase tracking-widest font-black">{{ $auction->category->name }}</span>
+                        <h3 class="text-white font-medium mt-1 line-clamp-2 group-hover:text-amber-400 transition-colors h-10">{{ $auction->title }}</h3>
 
-                        <div class="mt-3 flex items-end justify-between">
+                        <div class="mt-4 flex items-end justify-between">
                             <div>
-                                <p class="text-xs text-zinc-500">Harga saat ini</p>
-                                <p class="text-amber-400 font-semibold">Rp {{ number_format($auction->current_price, 0, ',', '.') }}</p>
+                                <p class="text-[10px] text-zinc-500 uppercase font-bold tracking-tighter">Harga saat ini</p>
+                                <p class="text-amber-400 font-bold">Rp {{ number_format($auction->current_price, 0, ',', '.') }}</p>
                             </div>
                             <div class="text-right">
-                                <p class="text-xs text-zinc-500">Berakhir</p>
-                                <p class="text-xs text-zinc-300">{{ \Carbon\Carbon::parse($auction->end_time)->diffForHumans() }}</p>
+                                <p class="text-[10px] text-zinc-500 uppercase font-bold tracking-tighter">Berakhir</p>
+                                <p class="text-xs font-mono font-bold transition-colors" :class="isUrgent ? 'text-orange-500' : 'text-zinc-300'">
+                                    <span x-text="timeLeft"></span>
+                                </p>
                             </div>
                         </div>
 
+                        {{-- Progress Bar --}}
+                        <div class="w-full h-1 bg-white/5 rounded-full mt-3 overflow-hidden">
+                            <div class="h-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all duration-1000" :style="'width: ' + progress + '%'"></div>
+                        </div>
+
                         {{-- Status Badge --}}
-                        <div class="mt-3">
+                        <div class="mt-4 flex items-center justify-between">
                             @if($auction->status === 'active')
-                                <span class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                                <span class="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20 uppercase font-bold tracking-widest">
+                                    <span class="w-1 h-1 rounded-full bg-green-400 animate-pulse"></span>
                                     Aktif
                                 </span>
-                            @elseif($auction->status === 'ended')
-                                <span class="text-xs px-2 py-1 rounded-full bg-zinc-800 text-zinc-500">Selesai</span>
+                            @else
+                                <span class="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-500 uppercase font-bold tracking-widest">Selesai</span>
                             @endif
                         </div>
                     </div>
                 </a>
             @endforeach
         </div>
+    </div>
+
+<script>
+    function auctionTimer(endTime) {
+        return {
+            timeLeft: '',
+            isUrgent: false,
+            progress: 100,
+            interval: null,
+
+            init() {
+                this.update();
+                this.interval = setInterval(() => this.update(), 1000);
+            },
+
+            update() {
+                const end = new Date(endTime).getTime();
+                const now = new Date().getTime();
+                const distance = end - now;
+
+                if (distance < 0) {
+                    this.timeLeft = 'Selesai';
+                    this.progress = 0;
+                    clearInterval(this.interval);
+                    return;
+                }
+
+                const d = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const h = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const s = Math.floor((distance % (1000 * 60)) / 1000);
+
+                this.timeLeft = (d > 0 ? d + 'd ' : '') + 
+                                h.toString().padStart(2, '0') + ':' + 
+                                m.toString().padStart(2, '0') + ':' + 
+                                s.toString().padStart(2, '0');
+                
+                this.isUrgent = distance < (60 * 60 * 1000);
+                this.progress = Math.min(100, (distance / (24 * 60 * 60 * 1000)) * 100);
+            }
+        }
+    }
+</script>
 
                 {{-- Pagination --}}
                 <div class="mt-16">

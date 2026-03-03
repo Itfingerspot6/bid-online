@@ -12,7 +12,7 @@ class User extends Authenticatable implements FilamentUser
 {
     use HasFactory, Notifiable;
 
-    protected $fillable = ['name', 'email', 'password', 'balance', 'role'];
+    protected $fillable = ['name', 'email', 'password', 'balance', 'role', 'avatar', 'bio', 'location'];
 
     public function auctions()
     {

@@ -60,7 +60,7 @@ class BidApprovalTest extends TestCase
         ]);
     }
 
-    public function test_user_can_submit_bid_as_pending()
+    public function test_user_can_submit_bid_and_it_is_automatically_approved()
     {
         $response = $this->actingAs($this->bidder)
             ->post(route('bids.store', $this->auction), [
@@ -73,110 +73,77 @@ class BidApprovalTest extends TestCase
             'auction_id' => $this->auction->id,
             'user_id'    => $this->bidder->id,
             'amount'     => 1500000,
-            'status'     => 'pending',
+            'status'     => 'approved',
         ]);
 
-        // Balance should not be deducted yet
-        $this->assertEquals(5000000, $this->bidder->fresh()->balance);
+        // Balance should be deducted automatically
+        $this->assertEquals(3500000, $this->bidder->fresh()->balance);
+        
+        // Auction current price should be updated
+        $this->assertEquals(1500000, $this->auction->fresh()->current_price);
+        
+        // Transaction should be created as pending
+        $this->assertDatabaseHas('transactions', [
+            'buyer_id'   => $this->bidder->id,
+            'auction_id' => $this->auction->id,
+            'amount'     => 1500000,
+            'status'     => 'pending',
+        ]);
     }
 
-    public function test_admin_can_approve_bid()
+    public function test_bid_automatically_closes_auction_on_buy_now()
     {
-        $bid = Bid::create([
-            'auction_id' => $this->auction->id,
-            'user_id'    => $this->bidder->id,
-            'amount'     => 2000000,
-            'status'     => 'pending',
-        ]);
+        $response = $this->actingAs($this->bidder)
+            ->post(route('bids.store', $this->auction), [
+                'amount' => 4000000, // Buy now price
+            ]);
 
-        $admin = User::create([
-            'name'     => 'Admin',
-            'email'    => 'admin@example.com',
+        $response->assertStatus(302);
+        
+        $auction = $this->auction->fresh();
+        $this->assertEquals('ended', $auction->status);
+        $this->assertEquals($this->bidder->id, $auction->winner_id);
+        
+        // Transaction should be completed
+        $this->assertDatabaseHas('transactions', [
+            'buyer_id'   => $this->bidder->id,
+            'auction_id' => $this->auction->id,
+            'amount'     => 4000000,
+            'status'     => 'completed',
+        ]);
+    }
+
+    public function test_automatic_refund_for_losing_bidders()
+    {
+        // 1. First bidder bids
+        $this->actingAs($this->bidder)
+            ->post(route('bids.store', $this->auction), [
+                'amount' => 1500000,
+            ]);
+
+        $secondBidder = User::create([
+            'name'     => 'Bidder 2',
+            'email'    => 'bidder2@example.com',
             'password' => bcrypt('password'),
-            'role'     => 'admin',
+            'balance'  => 5000000,
+            'role'     => 'user',
         ]);
 
-        // Simulating the action in Filament Resource would be hard via HTTP without full setup
-        // But we can test the logic directly or via the action if we trigger it
-        // Since the action is defined in BidResource, we can test the side effects 
-        // by manually calling the logic that the action performs.
-        
-        // Let's implement a test that checks the logic used in the BidResource action
-        $b = $bid;
-        $u = $this->bidder;
-        $a = $this->auction;
-
-        // Logic from BidResource approve action:
-        if ($u->balance >= $b->amount) {
-            $u->decrement('balance', $b->amount);
-            $b->update(['status' => 'approved']);
-            if ($b->amount > $a->current_price) {
-                $a->update(['current_price' => $b->amount]);
-            }
-            Transaction::create([
-                'buyer_id'    => $u->id,
-                'seller_id'   => $a->user_id,
-                'auction_id'  => $a->id,
-                'amount'      => $b->amount,
-                'status'      => 'pending',
-                'payment_ref' => 'BID-' . strtoupper(uniqid()),
+        // 2. Second bidder hits buy now
+        $this->actingAs($secondBidder)
+            ->post(route('bids.store', $this->auction), [
+                'amount' => 4000000,
             ]);
-        }
 
-        $this->assertEquals('approved', $b->fresh()->status);
-        $this->assertEquals(3000000, $u->fresh()->balance);
-        $this->assertEquals(2000000, $a->fresh()->current_price);
-        $this->assertDatabaseHas('transactions', [
-            'buyer_id' => $u->id,
-            'amount'   => 2000000,
-        ]);
-    }
-
-    public function test_bid_auto_closes_auction_on_buy_now_approval()
-    {
-        $bid = Bid::create([
-            'auction_id' => $this->auction->id,
-            'user_id'    => $this->bidder->id,
-            'amount'     => 4000000, // Buy now price
-            'status'     => 'pending',
-        ]);
-
-        $u = $this->bidder;
-        $a = $this->auction;
-
-        // Simulate Action logic
-        $u->decrement('balance', $bid->amount);
-        $bid->update(['status' => 'approved']);
-        $a->update(['current_price' => $bid->amount]);
+        // 3. First bidder (bidder 1) should be refunded
+        // Initial 5,000,000 - 1,500,000 (bid) + 1,500,000 (refund) = 5,000,000
+        $this->assertEquals(5000000, $this->bidder->fresh()->balance);
         
-        Transaction::create([
-            'buyer_id'    => $u->id,
-            'seller_id'   => $a->user_id,
-            'auction_id'  => $a->id,
-            'amount'      => $bid->amount,
-            'status'      => 'pending',
-            'payment_ref' => 'BID-' . strtoupper(uniqid()),
-        ]);
-
-        if ($a->buy_now_price && $bid->amount >= $a->buy_now_price) {
-            $a->update([
-                'status'    => 'ended',
-                'winner_id' => $u->id,
-            ]);
-            
-            Transaction::where('auction_id', $a->id)
-                ->where('buyer_id', $u->id)
-                ->where('status', 'pending')
-                ->latest()
-                ->first()
-                ?->update(['status' => 'completed']);
-        }
-
-        $this->assertEquals('ended', $a->fresh()->status);
-        $this->assertEquals($u->id, $a->fresh()->winner_id);
         $this->assertDatabaseHas('transactions', [
-            'buyer_id' => $u->id,
+            'buyer_id' => $this->bidder->id,
             'status'   => 'completed',
+            'amount'   => 1500000,
+            // Refund reference should be there (partial match)
         ]);
     }
 }

@@ -158,12 +158,17 @@
                                         </div>
                                     @endif
                                 </div>
-                                <div class="flex-1 min-w-0">
+                                <div class="flex-1 min-w-0" x-data="auctionTimer('{{ $auction->end_time }}')">
                                     <p class="text-white font-bold text-sm truncate group-hover:text-amber-400 transition-colors">{{ $auction->title }}</p>
                                     <p class="text-amber-400 font-bold text-xs mt-1">Rp {{ number_format($auction->current_price, 0, ',', '.') }}</p>
-                                    <div class="mt-2 flex items-center gap-2">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
-                                        <span class="text-[9px] text-zinc-500 uppercase font-black tracking-widest">{{ \Carbon\Carbon::parse($auction->end_time)->diffForHumans() }}</span>
+                                    <div class="mt-2 flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-1.5 h-1.5 rounded-full" :class="isUrgent ? 'bg-orange-500 animate-pulse' : 'bg-green-400'"></span>
+                                            <span class="text-[9px] font-mono font-bold tracking-widest transition-colors" :class="isUrgent ? 'text-orange-500' : 'text-zinc-500'" x-text="timeLeft"></span>
+                                        </div>
+                                        <div class="w-12 h-0.5 bg-white/5 rounded-full overflow-hidden">
+                                            <div class="h-full bg-amber-400 transition-all duration-1000" :style="'width: ' + progress + '%'"></div>
+                                        </div>
                                     </div>
                                 </div>
                             </a>
@@ -186,4 +191,46 @@
 
     </div>
 </div>
+
+<script>
+    function auctionTimer(endTime) {
+        return {
+            timeLeft: '',
+            isUrgent: false,
+            progress: 100,
+            interval: null,
+
+            init() {
+                this.update();
+                this.interval = setInterval(() => this.update(), 1000);
+            },
+
+            update() {
+                const end = new Date(endTime).getTime();
+                const now = new Date().getTime();
+                const distance = end - now;
+
+                if (distance < 0) {
+                    this.timeLeft = 'Selesai';
+                    this.progress = 0;
+                    clearInterval(this.interval);
+                    return;
+                }
+
+                const d = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const h = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const s = Math.floor((distance % (1000 * 60)) / 1000);
+
+                this.timeLeft = (d > 0 ? d + 'd ' : '') + 
+                                h.toString().padStart(2, '0') + ':' + 
+                                m.toString().padStart(2, '0') + ':' + 
+                                s.toString().padStart(2, '0');
+                
+                this.isUrgent = distance < (60 * 60 * 1000);
+                this.progress = Math.min(100, (distance / (24 * 60 * 60 * 1000)) * 100);
+            }
+        }
+    }
+</script>
 @endsection

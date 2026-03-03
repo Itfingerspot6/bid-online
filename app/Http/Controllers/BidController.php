@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 
 class BidController extends Controller
 {
-    public function store(Request $request, Auction $auction)
+    public function store(Request $request, Auction $auction, \App\Services\AuctionService $auctionService)
     {
         $request->validate([
             'amount' => 'required|numeric|min:0',
@@ -39,22 +39,17 @@ class BidController extends Controller
             return back()->withErrors(['amount' => 'Saldo kamu tidak cukup. Silakan deposit terlebih dahulu.']);
         }
 
-        // Tidak langsung kurangi saldo, menunggu approval admin
+        try {
+            $result = $auctionService->placeBid($auction, $user, $request->amount);
 
-        // Simpan bid dengan status pending
-        Bid::create([
-            'auction_id' => $auction->id,
-            'user_id'    => $user->id,
-            'amount'     => $request->amount,
-            'status'     => 'pending',
-        ]);
+            if ($result['status'] === 'won') {
+                return back()->with('success', '🎉 Selamat! Bid Buy Now berhasil dan Anda memenangkan lelang ini!');
+            }
 
-        // Cek apakah bid mencapai buy_now_price
-        if ($auction->buy_now_price && $request->amount >= $auction->buy_now_price) {
-            return back()->with('success', '🎉 Bid Buy Now berhasil diajukan! Jika admin menyetujui, kamu akan langsung memenangkan lelang ini!');
+            return back()->with('success', 'Bid berhasil diajukan dan saldo Anda telah terpotong secara otomatis.');
+        } catch (\Exception $e) {
+            return back()->withErrors(['amount' => 'Terjadi kesalahan saat memproses bid: ' . $e->getMessage()]);
         }
-
-        return back()->with('success', 'Bid berhasil diajukan! Menunggu persetujuan admin.');
     }
 
     private function closeAuction(Auction $auction, $winner)
