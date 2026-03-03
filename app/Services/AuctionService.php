@@ -16,7 +16,13 @@ class AuctionService
     public function placeBid(Auction $auction, User $user, float $amount)
     {
         return DB::transaction(function () use ($auction, $user, $amount) {
-            // 1. Kurangi saldo user (lock for update di controller atau di sini)
+            // 1. Ambil penawar tertinggi sebelumnya untuk notifikasi outbid
+            $previousBidder = Bid::where('auction_id', $auction->id)
+                ->where('status', 'approved')
+                ->latest()
+                ->first()?->user;
+
+            // 2. Kurangi saldo user
             $user->decrement('balance', $amount);
 
             // 2. Simpan bid dengan status approved
@@ -27,9 +33,14 @@ class AuctionService
                 'status'     => 'approved',
             ]);
 
-            // 3. Update harga lelang jika lebih tinggi
+            // 4. Update harga lelang jika lebih tinggi
             if ($amount > $auction->current_price) {
                 $auction->update(['current_price' => $amount]);
+            }
+
+            // 5. Kirim notifikasi outbid ke penawar sebelumnya (jika bukan user yang sama)
+            if ($previousBidder && $previousBidder->id !== $user->id) {
+                $previousBidder->notify(new \App\Notifications\AuctionOutbid($auction));
             }
 
             // 4. Catat transaksi (pending sampai lelang selesai atau langsung completed?)
@@ -41,6 +52,8 @@ class AuctionService
                 'amount'      => $amount,
                 'status'      => 'pending',
                 'payment_ref' => 'BID-' . strtoupper(uniqid()),
+                'type'        => 'bid',
+                'description' => 'Penawaran (Bid) pada: ' . $auction->title,
             ]);
 
             // 5. Cek apakah bid mencapai buy_now_price
@@ -71,6 +84,9 @@ class AuctionService
             ->first()
             ?->update(['status' => 'completed']);
 
+        // Kirim notifikasi pemenang
+        $winner->notify(new \App\Notifications\AuctionWon($auction));
+
         // Refund bidder lain yang memiliki bid 'approved' namun kalah
         // Catatan: Hanya me-refund bid terbaru dari setiap user yang kalah
         $losingBids = Bid::where('auction_id', $auction->id)
@@ -90,6 +106,8 @@ class AuctionService
                 'amount'      => $latestBid->amount,
                 'status'      => 'completed',
                 'payment_ref' => 'REFUND-' . strtoupper(uniqid()),
+                'type'        => 'refund',
+                'description' => 'Pengembalian Dana (Refund) Lelang: ' . $auction->title,
             ]);
         }
     }

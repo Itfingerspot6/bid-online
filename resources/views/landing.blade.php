@@ -78,10 +78,6 @@
                     </div>
                 </div>
                 
-                {{-- Decorative Elements --}}
-                <div class="absolute -top-6 -right-6 w-32 h-32 glass-card rounded-3xl flex items-center justify-center animate-bounce shadow-2xl" style="animation-duration: 3s;">
-                    <span class="text-4xl text-amber-400">🏆</span>
-                </div>
                 <div class="absolute -bottom-6 -left-6 px-6 py-4 glass-card rounded-2xl shadow-2xl flex items-center gap-3">
                     <div class="w-10 h-10 bg-green-500/20 rounded-full flex items-center justify-center text-green-500">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>

@@ -22,6 +22,10 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+    // Notifications
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/mark-as-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.markAllAsRead');
+
     // Auctions
     Route::resource('auctions', AuctionController::class)->except(['index', 'show']);
 
@@ -30,6 +34,7 @@ Route::middleware('auth')->group(function () {
 
     // Transactions
     Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
+    Route::get('/transactions/{transaction}/check-status', [TransactionController::class, 'checkStatus'])->name('transactions.checkStatus');
     Route::post('/transactions/deposit', [TransactionController::class, 'deposit'])->name('transactions.deposit');
     Route::post('/transactions/{transaction}/pay', [TransactionController::class, 'pay'])->name('transactions.pay');
 

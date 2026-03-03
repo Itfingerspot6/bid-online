@@ -1,5 +1,71 @@
 @extends('layouts.app')
 
+@push('scripts')
+    <script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="{{ config('services.midtrans.client_key') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const depositForm = document.getElementById('deposit-form');
+            const payButton = document.getElementById('pay-button');
+
+            if (depositForm) {
+                depositForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const rawAmount = document.getElementById('deposit-amount').value;
+                    const amount = rawAmount.replace(/[.,]/g, '');
+                    
+                    if (!amount || amount < 10000) {
+                        alert('Minimal deposit Rp 10.000');
+                        return;
+                    }
+
+                    payButton.disabled = true;
+                    payButton.innerHTML = '<span class="animate-spin inline-block mr-2">⏳</span> Memproses...';
+
+                    fetch('{{ route('transactions.deposit') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({ amount: amount })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.snap_token) {
+                            window.snap.pay(data.snap_token, {
+                                onSuccess: function(result) {
+                                    location.reload();
+                                },
+                                onPending: function(result) {
+                                    location.reload();
+                                },
+                                onError: function(result) {
+                                    console.error(result);
+                                    payButton.disabled = false;
+                                    payButton.innerHTML = 'Konfirmasi & Bayar';
+                                },
+                                onClose: function() {
+                                    payButton.disabled = false;
+                                    payButton.innerHTML = 'Konfirmasi & Bayar';
+                                }
+                            });
+                        } else {
+                            alert('Gagal mendapatkan token pembayaran: ' + (data.error || 'Unknown error'));
+                            payButton.disabled = false;
+                            payButton.innerHTML = 'Konfirmasi & Bayar';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        payButton.disabled = false;
+                        payButton.innerHTML = 'Konfirmasi & Bayar';
+                    });
+                });
+            }
+        });
+    </script>
+@endpush
+
 @section('title', 'Dompet & Transaksi')
 
 @section('content')
@@ -134,6 +200,13 @@
                                                 ">
                                                     {{ $transaction->status }}
                                                 </span>
+
+                                                @if($transaction->status === 'pending' && $transaction->type === 'deposit')
+                                                    <a href="{{ route('transactions.checkStatus', $transaction) }}" class="text-[9px] font-black uppercase tracking-widest text-amber-400 hover:text-amber-300 underline decoration-amber-400/30 transition-all flex items-center gap-1">
+                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                                        Cek Status
+                                                    </a>
+                                                @endif
                                             </div>
                                             <span class="text-[10px] text-zinc-600 font-mono hidden sm:inline">{{ $transaction->payment_ref }}</span>
                                         </div>
@@ -185,20 +258,20 @@
                     <p class="text-sm text-zinc-500 mt-2">Isi saldo untuk mulai melakukan penawaran</p>
                 </div>
 
-                <form method="POST" action="{{ route('transactions.deposit') }}" class="space-y-6">
+                <form id="deposit-form" class="space-y-6">
                     @csrf
                     <div>
                         <label class="block text-[10px] text-zinc-500 uppercase font-black tracking-widest mb-3">Jumlah Deposit (Min Rp 10.000)</label>
                         <div class="relative group">
                             <span class="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-400 font-bold group-focus-within:text-amber-400 transition-colors">Rp</span>
-                            <input type="number" name="amount" min="10000" required placeholder="0"
+                            <input type="number" name="amount" id="deposit-amount" min="10000" required placeholder="0"
                                 class="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-6 py-4 pl-12 text-2xl font-bold text-white focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 transition-all placeholder:text-zinc-700">
                         </div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
                         @foreach([50000, 100000, 250000, 500000] as $preset)
-                            <button type="button" onclick="this.form.amount.value = {{ $preset }}" class="p-3 bg-white/5 border border-white/5 rounded-xl text-xs font-bold text-zinc-400 hover:bg-white/10 hover:border-amber-400/50 hover:text-white transition-all">
+                            <button type="button" onclick="document.getElementById('deposit-amount').value = {{ $preset }}" class="p-3 bg-white/5 border border-white/5 rounded-xl text-xs font-bold text-zinc-400 hover:bg-white/10 hover:border-amber-400/50 hover:text-white transition-all">
                                 + Rp {{ number_format($preset, 0, ',', '.') }}
                             </button>
                         @endforeach
@@ -211,14 +284,15 @@
                         </div>
                         <div class="flex justify-between text-xs">
                             <span class="text-zinc-500">Metode</span>
-                            <span class="text-white font-bold">Simulasi Gateway</span>
+                            <span class="text-white font-bold">Midtrans Secure Payment</span>
                         </div>
                     </div>
 
-                    <button type="submit" class="btn-primary w-full py-4 text-sm uppercase font-black tracking-widest shadow-[0_10px_30px_rgba(251,191,36,0.3)]">
+                    <button type="submit" id="pay-button" class="btn-primary w-full py-4 text-sm uppercase font-black tracking-widest shadow-[0_10px_30px_rgba(251,191,36,0.3)]">
                         Konfirmasi & Bayar
                     </button>
                 </form>
+
             </div>
         </div>
     </div>

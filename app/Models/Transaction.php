@@ -10,7 +10,8 @@ class Transaction extends Model
     // app/Models/Transaction.php
 protected $fillable = [
     'auction_id', 'buyer_id', 'seller_id',
-    'amount', 'status', 'payment_ref'
+    'amount', 'status', 'payment_ref',
+    'type', 'description'
 ];
 
 public function auction()
