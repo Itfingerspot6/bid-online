@@ -12,7 +12,17 @@ class User extends Authenticatable implements FilamentUser
 {
     use HasFactory, Notifiable;
 
-    protected $fillable = ['name', 'email', 'password', 'balance', 'role', 'avatar', 'bio', 'location'];
+    protected $fillable = ['name', 'email', 'password', 'balance', 'role', 'avatar', 'bio', 'location', 'seller_status'];
+
+    public function isSeller()
+    {
+        return $this->role === 'seller';
+    }
+
+    public function canCreateAuction()
+    {
+        return $this->role === 'admin' || ($this->role === 'seller' && $this->seller_status === 'approved');
+    }
 
     public function auctions()
     {

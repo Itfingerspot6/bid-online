@@ -5,6 +5,7 @@ use App\Http\Controllers\AuctionController;
 use App\Http\Controllers\BidController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\SellerRequestController;
 use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Facades\Route;
 
@@ -26,8 +27,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/mark-as-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.markAllAsRead');
 
-    // Auctions
-    Route::resource('auctions', AuctionController::class)->except(['index', 'show']);
+    // Auctions (Only for Sellers/Admins)
+    Route::middleware([\App\Http\Middleware\CheckSellerRole::class])->group(function () {
+        Route::resource('auctions', AuctionController::class)->except(['index', 'show']);
+    });
+
+    // Seller Request
+    Route::post('/seller/request', [SellerRequestController::class, 'store'])->name('seller.request');
 
     // Bids
     Route::post('/auctions/{auction}/bids', [BidController::class, 'store'])->name('bids.store');

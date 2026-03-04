@@ -41,7 +41,20 @@ class UserResource extends Resource
                     ->required()
                     ->numeric()
                     ->default(0.00),
-                Forms\Components\TextInput::make('role')
+                Forms\Components\Select::make('role')
+                    ->options([
+                        'admin' => 'Admin',
+                        'seller' => 'Seller',
+                        'user' => 'User',
+                    ])
+                    ->required(),
+                Forms\Components\Select::make('seller_status')
+                    ->options([
+                        'none' => 'None',
+                        'pending' => 'Pending',
+                        'approved' => 'Approved',
+                        'rejected' => 'Rejected',
+                    ])
                     ->required(),
             ]);
     }
@@ -71,13 +84,44 @@ class UserResource extends Resource
                 Tables\Columns\BadgeColumn::make('role')
                     ->colors([
                         'primary' => 'admin',
+                        'warning' => 'seller',
                         'success' => 'user',
+                    ]),
+                Tables\Columns\BadgeColumn::make('seller_status')
+                    ->colors([
+                        'secondary' => 'none',
+                        'warning' => 'pending',
+                        'success' => 'approved',
+                        'danger' => 'rejected',
                     ]),
             ])
             ->filters([
                 //
             ])
             ->actions([
+                Tables\Actions\Action::make('approve_seller')
+                    ->label('Setujui')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->visible(fn (User $record): bool => $record->seller_status === 'pending')
+                    ->action(function (User $record) {
+                        $record->update([
+                            'role' => 'seller',
+                            'seller_status' => 'approved',
+                        ]);
+                    })
+                    ->requiresConfirmation(),
+                Tables\Actions\Action::make('reject_seller')
+                    ->label('Tolak')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->visible(fn (User $record): bool => $record->seller_status === 'pending')
+                    ->action(function (User $record) {
+                        $record->update([
+                            'seller_status' => 'rejected',
+                        ]);
+                    })
+                    ->requiresConfirmation(),
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([

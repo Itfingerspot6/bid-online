@@ -15,11 +15,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-20">
                 <a href="{{ route('home') }}" class="flex items-center gap-2 group">
-                    <div class="w-10 h-10 bg-gradient-to-tr from-amber-400 to-orange-500 rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(251,191,36,0.2)] group-hover:scale-110 transition-transform duration-300">
-                        <svg class="w-6 h-6 text-zinc-950" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 6l3 1 m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9 M6 7l6-2 m6 2l3-1 m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9 m-3-9l-6-2 m0-2v2m0 16V5m0 16H9m3 0h3" />
-                        </svg>
-                    </div>
+                    <x-application-logo class="w-10 h-10 drop-shadow-[0_0_15px_rgba(245,158,11,0.5)] group-hover:scale-110 transition-transform duration-300" />
                     <div>
                         <span class="font-display text-2xl text-white tracking-tight">Bid<span class="text-amber-400">Online</span></span>
                     </div>
@@ -189,7 +185,8 @@
 
     <footer class="border-t border-white/5 mt-20 py-12 bg-zinc-950/50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <div class="flex justify-center items-center gap-2 mb-4 opacity-50">
+            <div class="flex justify-center items-center gap-3 mb-6 opacity-80">
+                <x-application-logo class="w-8 h-8" />
                 <span class="font-display text-xl text-white tracking-tight">Bid<span class="text-amber-400">Online</span></span>
             </div>
             <p class="text-zinc-600 text-sm tracking-wide">

@@ -20,6 +20,12 @@ class DashboardController extends Controller
 
         $watchedAuctions = auth()->user()->watchAuctions()->with(['category', 'seller'])->latest()->get();
 
-        return view('dashboard', compact('myAuctions', 'myBids', 'watchedAuctions'));
+        $potentialEarnings = Auction::where('user_id', auth()->id())
+            ->where('status', 'active')
+            ->with(['highestBid'])
+            ->get()
+            ->sum(fn($auction) => $auction->highestBid?->amount ?? 0);
+
+        return view('dashboard', compact('myAuctions', 'myBids', 'watchedAuctions', 'potentialEarnings'));
     }
 }
