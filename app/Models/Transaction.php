@@ -8,15 +8,21 @@ class Transaction extends Model
 {
     //
     // app/Models/Transaction.php
-protected $fillable = [
-    'auction_id', 'buyer_id', 'seller_id',
-    'amount', 'status', 'payment_ref',
-    'type', 'description'
-];
+    protected $fillable = [
+        'auction_id', 'buyer_id', 'seller_id',
+        'amount', 'status', 'payment_ref',
+        'type', 'description',
+        'shipping_address', 'tracking_number'
+    ];
 
 public function auction()
 {
     return $this->belongsTo(Auction::class);
+}
+
+public function review()
+{
+    return $this->hasOne(Review::class);
 }
 
 public function buyer()

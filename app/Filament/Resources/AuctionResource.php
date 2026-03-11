@@ -178,6 +178,20 @@ class AuctionResource extends Resource
                     ]),
             ])
             ->actions([
+                Tables\Actions\Action::make('approve')
+                    ->label('Setujui')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->visible(fn (Auction $record): bool => $record->status === 'draft')
+                    ->action(fn (Auction $record) => $record->update(['status' => 'active']))
+                    ->requiresConfirmation(),
+                Tables\Actions\Action::make('reject')
+                    ->label('Tolak')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->visible(fn (Auction $record): bool => $record->status === 'draft')
+                    ->action(fn (Auction $record) => $record->update(['status' => 'cancelled']))
+                    ->requiresConfirmation(),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
             ])

@@ -32,6 +32,14 @@ Route::middleware('auth')->group(function () {
         Route::resource('auctions', AuctionController::class)->except(['index', 'show']);
     });
 
+    // Reviews
+    Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store');
+
+    // Shipping
+    Route::post('/shipping/{transaction}/address', [App\Http\Controllers\ShippingController::class, 'updateAddress'])->name('shipping.updateAddress');
+    Route::post('/shipping/{transaction}/tracking', [App\Http\Controllers\ShippingController::class, 'updateTracking'])->name('shipping.updateTracking');
+    Route::post('/shipping/{transaction}/confirm', [App\Http\Controllers\ShippingController::class, 'confirmReceipt'])->name('shipping.confirm');
+
     // Seller Request
     Route::post('/seller/request', [SellerRequestController::class, 'store'])->name('seller.request');
 

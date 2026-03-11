@@ -7,18 +7,16 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class AuctionOutbid extends Notification
+class OutbidNotification extends Notification
 {
     use Queueable;
-
-    public $auction;
 
     /**
      * Create a new notification instance.
      */
-    public function __construct(\App\Models\Auction $auction)
+    public function __construct()
     {
-        $this->auction = $auction;
+        //
     }
 
     /**
@@ -28,7 +26,18 @@ class AuctionOutbid extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['database', 'broadcast'];
+        return ['mail'];
+    }
+
+    /**
+     * Get the mail representation of the notification.
+     */
+    public function toMail(object $notifiable): MailMessage
+    {
+        return (new MailMessage)
+            ->line('The introduction to the notification.')
+            ->action('Notification Action', url('/'))
+            ->line('Thank you for using our application!');
     }
 
     /**
@@ -39,12 +48,7 @@ class AuctionOutbid extends Notification
     public function toArray(object $notifiable): array
     {
         return [
-            'type' => 'outbid',
-            'title' => 'Penawaran Terlampaui!',
-            'message' => "Penawaran Anda di lelang \"{$this->auction->title}\" telah dilampaui orang lain.",
-            'auction_slug' => $this->auction->slug,
-            'current_price' => $this->auction->current_price,
-            'icon' => 'trending-up',
+            //
         ];
     }
 }

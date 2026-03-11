@@ -19,6 +19,16 @@ class User extends Authenticatable implements FilamentUser
         return $this->role === 'seller';
     }
 
+    public function reviews()
+    {
+        return $this->hasMany(Review::class, 'seller_id');
+    }
+
+    public function averageRating()
+    {
+        return $this->reviews()->avg('rating') ?: 0;
+    }
+
     public function canCreateAuction()
     {
         return $this->role === 'admin' || ($this->role === 'seller' && $this->seller_status === 'approved');

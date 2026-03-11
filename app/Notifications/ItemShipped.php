@@ -6,19 +6,20 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use App\Models\Transaction;
 
-class AuctionOutbid extends Notification
+class ItemShipped extends Notification
 {
     use Queueable;
 
-    public $auction;
+    public $transaction;
 
     /**
      * Create a new notification instance.
      */
-    public function __construct(\App\Models\Auction $auction)
+    public function __construct(Transaction $transaction)
     {
-        $this->auction = $auction;
+        $this->transaction = $transaction;
     }
 
     /**
@@ -39,12 +40,12 @@ class AuctionOutbid extends Notification
     public function toArray(object $notifiable): array
     {
         return [
-            'type' => 'outbid',
-            'title' => 'Penawaran Terlampaui!',
-            'message' => "Penawaran Anda di lelang \"{$this->auction->title}\" telah dilampaui orang lain.",
-            'auction_slug' => $this->auction->slug,
-            'current_price' => $this->auction->current_price,
-            'icon' => 'trending-up',
+            'type' => 'shipping',
+            'title' => 'Barang Dikirim!',
+            'message' => "Barang dari lelang \"{$this->transaction->auction->title}\" telah dikirim. Resi: {$this->transaction->tracking_number}",
+            'auction_slug' => $this->transaction->auction->slug,
+            'tracking_number' => $this->transaction->tracking_number,
+            'icon' => 'truck',
         ];
     }
 }

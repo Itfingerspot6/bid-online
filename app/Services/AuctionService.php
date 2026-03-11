@@ -134,7 +134,7 @@ class AuctionService
             ->where('status', 'pending')
             ->latest()
             ->first()
-            ?->update(['status' => 'completed']);
+            ?->update(['status' => 'paid']);
 
         // Kirim notifikasi pemenang
         $winner->notify(new \App\Notifications\AuctionWon($auction));

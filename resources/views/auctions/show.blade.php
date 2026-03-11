@@ -232,10 +232,32 @@
                 @endauth
             @endif
 
-            {{-- Seller --}}
-            <div class="mt-6 flex items-center gap-3 text-sm text-zinc-500">
-                <span>Dijual oleh</span>
-                <span class="text-zinc-300 font-medium">{{ $auction->seller->name }}</span>
+            {{-- Seller Info --}}
+            <div class="mt-8 pt-6 border-t border-zinc-800 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-500 overflow-hidden border border-white/5">
+                        @if($auction->seller->avatar)
+                            <img src="{{ Storage::url($auction->seller->avatar) }}" class="w-full h-full object-cover">
+                        @else
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                        @endif
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Penjual</p>
+                        <p class="text-sm font-bold text-white">{{ $auction->seller->name }}</p>
+                    </div>
+                </div>
+                
+                <div class="text-right">
+                    <div class="flex items-center gap-1 justify-end">
+                        @php $avgRating = $auction->seller->averageRating(); @endphp
+                        @for($i=1; $i<=5; $i++)
+                            <svg class="w-3 h-3 {{ $i <= $avgRating ? 'text-amber-400 fill-current' : 'text-zinc-700' }}" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                        @endfor
+                        <span class="text-xs font-bold text-white ml-1">{{ number_format($avgRating, 1) }}</span>
+                    </div>
+                    <p class="text-[10px] text-zinc-500 uppercase tracking-tighter">{{ $auction->seller->reviews()->count() }} Penilaian</p>
+                </div>
             </div>
         </div>
     </div>
@@ -283,6 +305,54 @@
             <div x-show="bids.length === 0 && {{ $auction->bids->where('status', 'approved')->count() }} === 0" class="p-6 text-center">
                 <p class="text-zinc-600">Belum ada bid. Jadilah yang pertama!</p>
             </div>
+        </div>
+    </div>
+    {{-- Reviews Section --}}
+    <div class="mt-12 border-t border-white/5 pt-12">
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h2 class="font-display text-2xl text-white">Penilaian Pembeli</h2>
+                <p class="text-xs text-zinc-500 mt-1 uppercase tracking-widest font-medium">Ulasan terbaru untuk penjual ini</p>
+            </div>
+            <div class="flex items-center gap-4 bg-zinc-900 border border-zinc-800 px-5 py-3 rounded-2xl">
+                <div class="flex text-amber-400">
+                    @for($i=1; $i<=5; $i++)
+                        <svg class="w-4 h-4 {{ $i <= $auction->seller->averageRating() ? 'fill-current' : 'opacity-20' }}" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                    @endfor
+                </div>
+                <span class="text-sm font-bold text-white">{{ number_format($auction->seller->averageRating(), 1) }} / 5.0</span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            @forelse($auction->seller->reviews()->latest()->take(6)->get() as $review)
+                <div class="glass-card p-6 rounded-3xl border border-white/5 flex flex-col gap-4 hover:border-white/10 transition-all duration-300">
+                    <div class="flex justify-between items-start">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-zinc-800 flex items-center justify-center text-[10px] font-black text-zinc-500 border border-white/5">
+                                {{ strtoupper(substr($review->user->name, 0, 2)) }}
+                            </div>
+                            <div>
+                                <p class="text-sm font-bold text-white">{{ $review->user->name }}</p>
+                                <p class="text-[10px] text-zinc-500 uppercase tracking-tighter">{{ $review->created_at->diffForHumans() }}</p>
+                            </div>
+                        </div>
+                        <div class="flex text-amber-400">
+                            @for($i=1; $i<=5; $i++)
+                                <svg class="w-3 h-3 {{ $i <= $review->rating ? 'fill-current' : 'text-zinc-700' }}" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                            @endfor
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <svg class="absolute -top-1 -left-1 w-4 h-4 text-white/5 fill-current" viewBox="0 0 24 24"><path d="M14.017 21L14.017 18C14.017 16.8954 14.9124 16 16.017 16H19.017C20.1216 16 21.017 16.8954 21.017 18V21C21.017 22.1046 20.1216 23 19.017 23H16.017C14.9124 23 14.017 22.1046 14.017 21ZM14.017 11V8C14.017 6.89543 14.9124 6 16.017 6H19.017C20.1216 6 21.017 6.89543 21.017 8V11C21.017 12.1046 20.1216 13 19.017 13H16.017C14.9124 13 14.017 12.1046 14.017 11ZM3.017 21V18C3.017 16.8954 3.91243 16 5.017 16H8.017C9.12157 16 10.017 16.8954 10.017 18V21C10.017 22.1046 9.12157 23 8.017 23H5.017C3.91243 23 3.017 22.1046 3.017 21ZM3.017 11V8C3.017 6.89543 3.91243 6 5.017 6H8.017C9.12157 6 10.017 6.89543 10.017 8V11C10.017 12.1046 9.12157 13 8.017 13H5.017C3.91243 13 3.017 12.1046 3.017 11Z"/></svg>
+                        <p class="text-sm text-zinc-400 italic leading-relaxed pl-4">"{{ $review->comment ?: 'Tidak ada komentar.' }}"</p>
+                    </div>
+                </div>
+            @empty
+                <div class="col-span-full py-16 text-center glass-card rounded-3xl border border-dashed border-white/10 opacity-50">
+                    <p class="text-zinc-600 text-sm italic">Belum ada penilaian untuk penjual ini. Jadilah pembeli pertama yang memberikan ulasan!</p>
+                </div>
+            @endforelse
         </div>
     </div>
 </div>

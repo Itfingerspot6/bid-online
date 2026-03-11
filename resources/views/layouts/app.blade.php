@@ -4,6 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    @auth
+        <meta name="user-id" content="{{ auth()->id() }}">
+    @endauth
     <title>{{ config('app.name', 'BidOnline') }} - @yield('title', 'Platform Lelang Online')</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Outfit:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -61,6 +64,16 @@
                                 this.fetchNotifications();
                                 setInterval(() => this.fetchNotifications(), 30000);
                             },
+                            handleNewNotification(event) {
+                                const notification = event.detail;
+                                this.notifications.unshift({
+                                    id: notification.id || Date.now(),
+                                    data: notification,
+                                    read_at: null,
+                                    created_at: new Date().toISOString()
+                                });
+                                this.unreadCount++;
+                            },
                             async fetchNotifications() {
                                 try {
                                     const response = await fetch('{{ route('notifications.index') }}');
@@ -81,7 +94,9 @@
                                     this.unreadCount = 0;
                                 } catch (e) { console.error(e); }
                             }
-                        }" class="relative">
+                         }" 
+                         @notification-received.window="handleNewNotification($event)"
+                         class="relative">
                             <button @click="open = !open; if(open) fetchNotifications()" class="relative p-2 text-zinc-400 hover:text-amber-400 transition-colors">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
                                 <template x-if="unreadCount > 0">

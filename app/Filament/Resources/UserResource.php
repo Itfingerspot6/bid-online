@@ -109,6 +109,7 @@ class UserResource extends Resource
                             'role' => 'seller',
                             'seller_status' => 'approved',
                         ]);
+                        $record->notify(new \App\Notifications\SellerStatusUpdatedNotification('approved', 'Permintaan Anda untuk menjadi penjual telah disetujui!'));
                     })
                     ->requiresConfirmation(),
                 Tables\Actions\Action::make('reject_seller')
@@ -120,6 +121,7 @@ class UserResource extends Resource
                         $record->update([
                             'seller_status' => 'rejected',
                         ]);
+                        $record->notify(new \App\Notifications\SellerStatusUpdatedNotification('rejected', 'Maaf, permintaan Anda untuk menjadi penjual ditolak.'));
                     })
                     ->requiresConfirmation(),
                 Tables\Actions\EditAction::make(),

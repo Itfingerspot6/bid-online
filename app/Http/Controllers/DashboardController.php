@@ -26,6 +26,13 @@ class DashboardController extends Controller
             ->get()
             ->sum(fn($auction) => $auction->highestBid?->amount ?? 0);
 
-        return view('dashboard', compact('myAuctions', 'myBids', 'watchedAuctions', 'potentialEarnings'));
+        $pendingReviews = \App\Models\Transaction::where('buyer_id', auth()->id())
+            ->where('status', 'completed')
+            ->where('type', 'bid')
+            ->whereDoesntHave('review')
+            ->with('auction.seller')
+            ->get();
+
+        return view('dashboard', compact('myAuctions', 'myBids', 'watchedAuctions', 'potentialEarnings', 'pendingReviews'));
     }
 }

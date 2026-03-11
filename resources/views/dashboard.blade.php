@@ -189,9 +189,65 @@
                                         {{ $auction->bids->count() }}
                                     </td>
                                     <td class="px-6 py-4 text-right">
-                                        <a href="{{ route('auctions.show', $auction->slug) }}" class="text-zinc-500 hover:text-amber-400 transition-colors">
-                                            <svg class="w-5 h-5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                                        </a>
+                                        <div class="flex items-center justify-end gap-3">
+                                            @if($auction->status === 'ended' && $auction->winner_id)
+                                                @php
+                                                    $winnerTransaction = \App\Models\Transaction::where('auction_id', $auction->id)
+                                                        ->where('buyer_id', $auction->winner_id)
+                                                        ->where('type', 'bid')
+                                                        ->latest()
+                                                        ->first();
+                                                @endphp
+
+                                                @if($winnerTransaction)
+                                                    @if($winnerTransaction->status === 'paid' && $winnerTransaction->shipping_address)
+                                                        <div x-data="{ showShipping: false }">
+                                                            <button @click.prevent="showShipping = true" class="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-teal-400 text-zinc-950 rounded-lg hover:bg-teal-300 transition-colors">
+                                                                Kirim Barang
+                                                            </button>
+
+                                                            <template x-if="showShipping">
+                                                                <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 text-left">
+                                                                    <div @click="showShipping = false" class="absolute inset-0 bg-zinc-950/80 backdrop-blur-sm"></div>
+                                                                    <div class="relative w-full max-w-sm glass-card border border-white/10 rounded-3xl p-8 shadow-2xl" @click.stop>
+                                                                        <h3 class="text-lg font-bold text-white mb-4">Proses Pengiriman</h3>
+                                                                        
+                                                                        <div class="mb-6 bg-white/5 p-4 rounded-2xl border border-white/5">
+                                                                            <p class="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-2">Alamat Tujuan ({{ $auction->winner->name }})</p>
+                                                                            <p class="text-sm text-zinc-300 italic">"{{ $winnerTransaction->shipping_address }}"</p>
+                                                                        </div>
+
+                                                                        <form action="{{ route('shipping.updateTracking', $winnerTransaction->id) }}" method="POST" class="space-y-6">
+                                                                            @csrf
+                                                                            <div class="flex flex-col gap-2">
+                                                                                <label class="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Nomor Resi / Ekspedisi</label>
+                                                                                <input type="text" name="tracking_number" class="w-full bg-white/[0.03] border border-white/5 rounded-2xl px-4 py-3 text-sm focus:border-amber-400/50 outline-none transition-all placeholder:text-zinc-700" placeholder="Contoh: JNE - 123456789" required>
+                                                                            </div>
+
+                                                                            <div class="flex gap-3">
+                                                                                <button type="button" @click="showShipping = false" class="flex-1 py-3 border border-white/5 text-zinc-400 rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-white/5 transition-colors">Batal</button>
+                                                                                <button type="submit" class="flex-1 py-3 bg-teal-400 text-zinc-950 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-teal-300 transition-colors">Update Resi</button>
+                                                                            </div>
+                                                                        </form>
+                                                                    </div>
+                                                                </div>
+                                                            </template>
+                                                        </div>
+                                                    @elseif($winnerTransaction->status === 'paid' && !$winnerTransaction->shipping_address)
+                                                        <span class="text-[9px] font-bold text-zinc-500 italic">Menunggu Alamat...</span>
+                                                    @elseif($winnerTransaction->status === 'shipped')
+                                                        <div class="flex flex-col items-end">
+                                                            <span class="text-[9px] font-black uppercase tracking-widest text-teal-400">Terkirim</span>
+                                                            <span class="text-[8px] text-zinc-500 truncate max-w-[80px]">{{ $winnerTransaction->tracking_number }}</span>
+                                                        </div>
+                                                    @endif
+                                                @endif
+                                            @endif
+
+                                            <a href="{{ route('auctions.show', $auction->slug) }}" class="text-zinc-500 hover:text-amber-400 transition-colors">
+                                                <svg class="w-5 h-5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                            </a>
+                                        </div>
                                     </td>
                                 </tr>
                             @empty
@@ -227,6 +283,119 @@
                             </span>
                             <span class="text-[10px] text-zinc-500">{{ $bid->created_at->diffForHumans() }}</span>
                         </div>
+
+                        {{-- Shipping & Review Section if Won --}}
+                        @if($bid->auction->status === 'ended' && $bid->auction->winner_id === auth()->id())
+                            @php
+                                $transaction = \App\Models\Transaction::where('auction_id', $bid->auction_id)
+                                    ->where('buyer_id', auth()->id())
+                                    ->where('type', 'bid')
+                                    ->latest()
+                                    ->first();
+                            @endphp
+
+                            @if($transaction)
+                                <div class="mt-4 pt-4 border-t border-white/5 space-y-3">
+                                    {{-- Status Pengiriman --}}
+                                    @if($transaction->status === 'shipped')
+                                        <div class="space-y-3">
+                                            <div class="flex items-center gap-2 text-teal-400 bg-teal-400/5 px-3 py-2 rounded-xl border border-teal-400/10">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                                <div class="min-w-0">
+                                                    <p class="text-[10px] font-black uppercase tracking-widest leading-none">Barang Dikirim</p>
+                                                    <p class="text-[9px] truncate opacity-70">Resi: {{ $transaction->tracking_number }}</p>
+                                                </div>
+                                            </div>
+
+                                            <form action="{{ route('shipping.confirm', $transaction->id) }}" method="POST">
+                                                @csrf
+                                                <button type="submit" class="w-full py-2 bg-teal-400 text-zinc-950 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-teal-300 transition-colors">
+                                                    Barang Diterima
+                                                </button>
+                                            </form>
+                                        </div>
+                                    @endif
+
+                                    @if(!$transaction->shipping_address)
+                                        <div x-data="{ showAddress: false }">
+                                            <button @click.prevent="showAddress = true" class="w-full py-2 bg-white/5 border border-white/10 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-colors">
+                                                Input Alamat Pengiriman
+                                            </button>
+
+                                            <template x-if="showAddress">
+                                                <div class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                                                    <div @click="showAddress = false" class="absolute inset-0 bg-zinc-950/80 backdrop-blur-sm"></div>
+                                                    <div class="relative w-full max-w-sm glass-card border border-white/10 rounded-3xl p-8 shadow-2xl" @click.stop>
+                                                        <h3 class="text-lg font-bold text-white mb-2">Alamat Pengiriman</h3>
+                                                        <p class="text-xs text-zinc-500 mb-6">Masukkan alamat lengkap Anda agar penjual bisa mengirimkan barang.</p>
+                                                        
+                                                        <form action="{{ route('shipping.updateAddress', $transaction->id) }}" method="POST" class="space-y-6">
+                                                            @csrf
+                                                            <div class="flex flex-col gap-2">
+                                                                <label class="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Alamat Lengkap</label>
+                                                                <textarea name="shipping_address" rows="4" class="w-full bg-white/[0.03] border border-white/5 rounded-2xl px-4 py-3 text-sm focus:border-amber-400/50 outline-none transition-all placeholder:text-zinc-700" placeholder="Jl. Contoh No. 123, Kota, Provinsi, Kode Pos..." required></textarea>
+                                                            </div>
+
+                                                            <div class="flex gap-3">
+                                                                <button type="button" @click="showAddress = false" class="flex-1 py-3 border border-white/5 text-zinc-400 rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-white/5 transition-colors">Batal</button>
+                                                                <button type="submit" class="flex-1 py-3 bg-white text-zinc-950 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-zinc-200 transition-colors">Simpan</button>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    @else
+                                        <div class="text-[10px] text-zinc-500 bg-white/5 p-3 rounded-xl border border-white/5">
+                                            <p class="font-bold uppercase tracking-widest mb-1">Alamat Pengiriman ✅</p>
+                                            <p class="italic leading-relaxed">"{{ $transaction->shipping_address }}"</p>
+                                        </div>
+                                    @endif
+
+                                    {{-- Review Button --}}
+                                    @php $hasReview = $transaction->review()->exists(); @endphp
+                                    @if(!$hasReview && $transaction->status === 'completed')
+                                        <div x-data="{ showReview: false }">
+                                            <button @click.prevent="showReview = true" class="w-full py-2 bg-amber-400 text-zinc-950 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-300 transition-colors">
+                                                Beri Penilaian
+                                            </button>
+
+                                            <template x-if="showReview">
+                                                <div class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                                                    <div @click="showReview = false" class="absolute inset-0 bg-zinc-950/80 backdrop-blur-sm"></div>
+                                                    <div class="relative w-full max-w-sm glass-card border border-white/10 rounded-3xl p-8 shadow-2xl" @click.stop>
+                                                        <h3 class="text-lg font-bold text-white mb-2">Penilaian Penjual</h3>
+                                                        <form action="{{ route('reviews.store') }}" method="POST" class="space-y-6">
+                                                            @csrf
+                                                            <input type="hidden" name="transaction_id" value="{{ $transaction->id }}">
+                                                            <div class="flex flex-col gap-2">
+                                                                <label class="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Rating (1-5)</label>
+                                                                <div class="flex gap-2" x-data="{ rating: 5 }">
+                                                                    <template x-for="i in 5">
+                                                                        <button type="button" @click="rating = i" class="transition-transform active:scale-95">
+                                                                            <svg class="w-8 h-8" :class="i <= rating ? 'text-amber-400 fill-current' : 'text-zinc-700'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                                                                        </button>
+                                                                    </template>
+                                                                    <input type="hidden" name="rating" :value="rating">
+                                                                </div>
+                                                            </div>
+                                                            <div class="flex flex-col gap-2">
+                                                                <label class="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Komentar</label>
+                                                                <textarea name="comment" rows="3" class="w-full bg-white/[0.03] border border-white/5 rounded-2xl px-4 py-3 text-sm focus:border-amber-400/50 outline-none transition-all placeholder:text-zinc-700" placeholder="Ceritakan pengalaman Anda..."></textarea>
+                                                            </div>
+                                                            <div class="flex gap-3">
+                                                                <button type="button" @click="showReview = false" class="flex-1 py-3 border border-white/5 text-zinc-400 rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-white/5 transition-colors">Batal</button>
+                                                                <button type="submit" class="flex-1 py-3 bg-amber-400 text-zinc-950 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-300 transition-colors">Kirim</button>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
+                        @endif
                     </a>
                 @empty
                     <div class="col-span-full py-12 text-center glass-card rounded-3xl border border-dashed border-white/10">
